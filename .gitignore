@@ -1,7 +1,5 @@
-@'
-node_modules/
-coverage/
-dist/
-.DS_Store
-.venv/
-'@ | Set-Content .gitignore
+   node_modules/
+   coverage/
+   dist/
+   .DS_Store
+   .venv/
