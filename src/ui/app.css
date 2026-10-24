@@ -1,0 +1,86 @@
+/* Page layout and controls. The diff table has its own file, diff.css. */
+:root {
+  --page-bg: #ffffff;
+  --page-text: #1b1f24;
+  --page-muted: #5b636e;
+  --field-bg: #ffffff;
+  --field-border: #8c959f;
+  --accent: #0b5cad;
+  --accent-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #0d1117;
+    --page-text: #e6edf3;
+    --page-muted: #9aa4af;
+    --field-bg: #161b22;
+    --field-border: #6e7681;
+    --accent: #4493f8;
+    --accent-text: #0d1117;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 1rem 1.25rem 2rem;
+  background: var(--page-bg);
+  color: var(--page-text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+header p { margin: 0.25rem 0 1rem; color: var(--page-muted); }
+h1 { margin: 0; font-size: 1.5rem; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 800px) {
+  .panes { grid-template-columns: 1fr; }
+}
+
+.panes label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+
+textarea {
+  width: 100%;
+  min-height: 14rem;
+  padding: 0.5rem;
+  background: var(--field-bg);
+  color: var(--page-text);
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  resize: vertical;
+  white-space: pre;
+}
+
+select, button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  background: var(--field-bg);
+  color: var(--page-text);
+  font: inherit;
+}
+
+button { cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+#diff-summary { margin: 1rem 0 0.5rem; font-weight: 600; min-height: 1.5rem; }

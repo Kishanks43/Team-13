@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code Merge Simulator</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="src/ui/app.css" />
+    <link rel="stylesheet" href="src/ui/diff.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Web-Based Code Merge Simulator</h1>
+      <p>Put two versions of some code side by side and see exactly what differs.</p>
+    </header>
+
+    <main>
+      <section class="toolbar" aria-label="Actions">
+        <label for="sample-select">Sample</label>
+        <select id="sample-select"></select>
+        <button type="button" id="load-sample-btn">Load sample</button>
+        <button type="button" id="compare-btn" class="primary">Compare</button>
+      </section>
+
+      <section class="panes" aria-label="Code versions">
+        <div>
+          <label for="pane-a">Version A</label>
+          <textarea id="pane-a" spellcheck="false" autocomplete="off"></textarea>
+        </div>
+        <div>
+          <label for="pane-b">Version B</label>
+          <textarea id="pane-b" spellcheck="false" autocomplete="off"></textarea>
+        </div>
+      </section>
+
+      <p id="diff-summary" role="status" aria-live="polite"></p>
+      <section id="diff-output" aria-label="Comparison result"></section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
