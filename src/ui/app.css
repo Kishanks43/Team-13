@@ -7,6 +7,7 @@
   --field-border: #8c959f;
   --accent: #0b5cad;
   --accent-text: #ffffff;
+  --error-text: #b42318;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,7 @@
     --field-border: #6e7681;
     --accent: #4493f8;
     --accent-text: #0d1117;
+    --error-text: #ff8b81;
   }
 }
 
@@ -53,7 +55,12 @@ h1 { margin: 0; font-size: 1.5rem; }
   .panes { grid-template-columns: 1fr; }
 }
 
-.panes label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.25rem; }
+.panes label { display: block; font-weight: 600; }
+.pane-count { margin-left: auto; font-size: 0.875rem; color: var(--page-muted); }
+button.small { padding: 0.2rem 0.6rem; font-size: 0.875rem; }
+.pane-note { margin: 0.25rem 0 0; min-height: 1.4rem; font-size: 0.875rem; color: var(--page-muted); }
+.pane-note.error { color: var(--error-text); font-weight: 600; }
 
 textarea {
   width: 100%;

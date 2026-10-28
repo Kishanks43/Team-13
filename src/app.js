@@ -5,6 +5,8 @@
 import { diffText, summarize } from "./engine/diff.js";
 import { buildRows, renderSideBySide } from "./ui/diffView.js";
 import { samples, getSample } from "./samples.js";
+import { describeLines } from "./ui/paneInfo.js";
+import { loadFile } from "./fileLoader.js";
 
 /**
  * compare()  runs the diff now and switches on "live" mode.
@@ -72,15 +74,51 @@ export function init(doc) {
     sampleSelect.appendChild(option);
   }
 
+  // Each pane shows how many lines it holds, and keeps it current as the text changes.
+  const countA = doc.getElementById("count-a");
+  const countB = doc.getElementById("count-b");
+  function updateCounts() {
+    countA.textContent = describeLines(paneA.value);
+    countB.textContent = describeLines(paneB.value);
+  }
+  updateCounts();
+
   compareBtn.addEventListener("click", comparer.compare);
-  paneA.addEventListener("input", comparer.onEdit);
-  paneB.addEventListener("input", comparer.onEdit);
+  for (const pane of [paneA, paneB]) {
+    pane.addEventListener("input", () => {
+      updateCounts();
+      comparer.onEdit();
+    });
+  }
+
+  // "Load file…" for each pane: read the chosen file, or explain why it could not be read.
+  function wireFileLoading(pane, button, input, note) {
+    button.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      input.value = ""; // lets the same file be chosen again later
+      if (!file) return;
+      const result = await loadFile(file);
+      note.classList.toggle("error", !result.ok);
+      if (!result.ok) {
+        note.textContent = result.error; // the pane keeps whatever it had before
+        return;
+      }
+      pane.value = result.text;
+      note.textContent = `Loaded ${result.name}`;
+      updateCounts();
+      comparer.onEdit();
+    });
+  }
+  wireFileLoading(paneA, doc.getElementById("load-a-btn"), doc.getElementById("file-a"), doc.getElementById("note-a"));
+  wireFileLoading(paneB, doc.getElementById("load-b-btn"), doc.getElementById("file-b"), doc.getElementById("note-b"));
 
   loadSampleBtn.addEventListener("click", () => {
     const sample = getSample(sampleSelect.value);
     if (!sample) return;
     paneA.value = sample.a;
     paneB.value = sample.b;
+    updateCounts();
     comparer.compare();
   });
 }
