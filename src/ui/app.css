@@ -53,7 +53,9 @@ h1 { margin: 0; font-size: 1.5rem; }
   .panes { grid-template-columns: 1fr; }
 }
 
-.panes label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.25rem; }
+.panes label { display: block; font-weight: 600; }
+.pane-count { font-size: 0.875rem; color: var(--page-muted); }
 
 textarea {
   width: 100%;
