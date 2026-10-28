@@ -27,15 +27,29 @@
           <div class="pane-head">
             <label for="pane-a">Version A</label>
             <span id="count-a" class="pane-count">0 lines</span>
+          <div class="pane-head">
+            <label for="pane-a">Version A</label>
+            <span id="count-a" class="pane-count">0 lines</span>
+            <button type="button" id="load-a-btn" class="small">Load file…</button>
+            <input type="file" id="file-a" hidden />
+          </div>
           </div>
           <textarea id="pane-a" spellcheck="false" autocomplete="off"></textarea>
+          <p id="note-a" class="pane-note" role="status" aria-live="polite"></p>
         </div>
         <div>
           <div class="pane-head">
             <label for="pane-b">Version B</label>
             <span id="count-b" class="pane-count">0 lines</span>
+          <div class="pane-head">
+            <label for="pane-b">Version B</label>
+            <span id="count-b" class="pane-count">0 lines</span>
+            <button type="button" id="load-b-btn" class="small">Load file…</button>
+            <input type="file" id="file-b" hidden />
+          </div>
           </div>
           <textarea id="pane-b" spellcheck="false" autocomplete="off"></textarea>
+          <p id="note-b" class="pane-note" role="status" aria-live="polite"></p>
         </div>
       </section>
 
