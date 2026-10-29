@@ -1,20 +1,36 @@
-
+```javascript
 /**
- * Loading a version from a file: size and content checks, then decoding to text.
- * Works on plain objects with name, size and arrayBuffer(), which is what a browser File provides,
- * so it can be tested without a browser.
+ * File loader for the Code Merge Simulator.
+ *
+ * Features:
+ * - Enforces a 2 MB file size limit.
+ * - Rejects binary files instead of displaying garbage text.
+ * - Validates UTF-8 content.
+ * - Handles unreadable files safely.
+ * - Preserves existing pane content when a file is rejected.
+ *
+ * Works with browser File objects and test doubles.
  */
 
-export const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MiB
 
 const SNIFF_BYTES = 8000;
 
 /**
- * True if the bytes look binary:
- * - contain a NUL byte near the start, or
- * - contain invalid UTF-8 anywhere in the file.
+ * Determines whether a byte array appears to contain binary data.
+ *
+ * A file is considered binary if:
+ * - It contains a NUL byte in the initial sniffing region, or
+ * - Its contents are not valid UTF-8.
+ *
+ * @param {Uint8Array} bytes
+ * @returns {boolean}
  */
 export function looksBinary(bytes) {
+  if (!(bytes instanceof Uint8Array)) {
+    return true;
+  }
+
   const end = Math.min(bytes.length, SNIFF_BYTES);
 
   for (let i = 0; i < end; i++) {
@@ -24,7 +40,7 @@ export function looksBinary(bytes) {
   }
 
   try {
-    // Validate the complete file, not just the first few thousand bytes.
+    // Validate the entire file, not just the initial sniffing region.
     new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     return false;
   } catch {
@@ -33,31 +49,44 @@ export function looksBinary(bytes) {
 }
 
 /**
- * Decode UTF-8 bytes into text.
- * A leading byte-order mark is removed by TextDecoder by default.
+ * Decodes UTF-8 bytes into text.
+ *
+ * A leading UTF-8 byte-order mark is removed by default.
+ *
+ * @param {Uint8Array} bytes
+ * @returns {string}
  */
 export function decodeText(bytes) {
-  return new TextDecoder("utf-8").decode(bytes);
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 /**
- * Check file size before reading it.
- * Returns an error message or null if the size is acceptable.
+ * Checks whether a file size is acceptable.
+ *
+ * @param {number} size
+ * @param {number} max
+ * @returns {string|null}
  */
 export function checkSize(size, max = MAX_FILE_BYTES) {
-  if (!Number.isFinite(size) || size < 0) {
+  if (!Number.isSafeInteger(size) || size < 0) {
     return "Invalid file size.";
   }
 
+  if (!Number.isSafeInteger(max) || max < 0) {
+    return "Invalid file size limit.";
+  }
+
   if (size > max) {
-    return `This file is too large. Files over ${max / (1024 * 1024)} MB are not accepted.`;
+    const maxMB = max / (1024 * 1024);
+
+    return `This file is too large. Files over ${maxMB} MB are not accepted.`;
   }
 
   return null;
 }
 
 /**
- * Read a file into text.
+ * Loads a file and validates its size and content before returning text.
  *
  * Success:
  *   { ok: true, name, text }
@@ -65,8 +94,15 @@ export function checkSize(size, max = MAX_FILE_BYTES) {
  * Failure:
  *   { ok: false, name, error }
  *
- * Never throws. The caller should update the pane only when ok is true,
- * so a rejected file does not replace existing pane text.
+ * This function does not throw. The caller should update the editor pane
+ * only when result.ok is true.
+ *
+ * @param {File|object} file
+ * @param {number} max
+ * @returns {Promise<
+ *   {ok: true, name: string, text: string} |
+ *   {ok: false, name: string, error: string}
+ * >}
  */
 export async function loadFile(file, max = MAX_FILE_BYTES) {
   const name =
@@ -83,6 +119,7 @@ export async function loadFile(file, max = MAX_FILE_BYTES) {
       };
     }
 
+    // Validate the configured limit and metadata before reading the file.
     const sizeError = checkSize(file.size, max);
 
     if (sizeError) {
@@ -93,9 +130,10 @@ export async function loadFile(file, max = MAX_FILE_BYTES) {
       };
     }
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
 
-    // Protect against a file whose actual content size differs from its metadata.
+    // Verify actual content size instead of trusting metadata alone.
     const actualSizeError = checkSize(bytes.byteLength, max);
 
     if (actualSizeError) {
@@ -106,6 +144,7 @@ export async function loadFile(file, max = MAX_FILE_BYTES) {
       };
     }
 
+    // Reject binary or invalid UTF-8 content.
     if (looksBinary(bytes)) {
       return {
         ok: false,
@@ -127,3 +166,4 @@ export async function loadFile(file, max = MAX_FILE_BYTES) {
     };
   }
 }
+```
