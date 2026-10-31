@@ -8,6 +8,8 @@ import { buildRows, renderSideBySide } from "./ui/diffView.js";
 import { samples, getSample } from "./samples.js";
 import { describeLines } from "./ui/paneInfo.js";
 import { loadFile } from "./fileLoader.js";
+import { createSession } from "./engine/session.js";
+import { formatProgress } from "./ui/progress.js";
 
 /**
  * compare() runs the diff now and switches on "live" mode.
@@ -79,12 +81,20 @@ export function init(doc) {
   const sampleSelect = doc.getElementById("sample-select");
   const loadSampleBtn = doc.getElementById("load-sample-btn");
 
+  // The session holds the conflicts and what has been decided about each. The counter follows it.
+  const counter = doc.getElementById("conflict-counter");
+  const session = createSession();
+  session.subscribe((state) => {
+    counter.textContent = formatProgress(state.progress);
+  });
+
   const comparer = createComparer({
     getA: () => paneA.value,
     getB: () => paneB.value,
     render: (ops) => {
       output.innerHTML = renderSideBySide(buildRows(ops));
       summary.textContent = formatSummary(ops);
+      session.load(ops);
     },
   });
 
@@ -178,6 +188,8 @@ export function init(doc) {
     updateCounts();
     comparer.compare();
   });
+
+  return { comparer, session };
 }
 
 if (typeof document !== "undefined") {
