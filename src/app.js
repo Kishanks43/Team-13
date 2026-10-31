@@ -10,6 +10,7 @@ import { describeLines } from "./ui/paneInfo.js";
 import { loadFile } from "./fileLoader.js";
 import { createSession } from "./engine/session.js";
 import { formatProgress } from "./ui/progress.js";
+import { renderConflictList } from "./ui/conflictList.js";
 
 /**
  * compare() runs the diff now and switches on "live" mode.
@@ -84,8 +85,20 @@ export function init(doc) {
   // The session holds the conflicts and what has been decided about each. The counter follows it.
   const counter = doc.getElementById("conflict-counter");
   const session = createSession();
+  const conflictList = doc.getElementById("conflict-list");
   session.subscribe((state) => {
     counter.textContent = formatProgress(state.progress);
+    conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
+  });
+
+  // Clicking a conflict in the list selects it. The list is redrawn, so put the keyboard focus back.
+  conflictList.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-conflict-id]");
+    if (!item) return;
+    const id = Number(item.dataset.conflictId);
+    session.select(id);
+    const again = conflictList.querySelector(`[data-conflict-id="${id}"]`);
+    if (again) again.focus();
   });
 
   const comparer = createComparer({
