@@ -150,3 +150,5 @@ button.primary {
   font-weight: 600;
   min-height: 1.5rem;
 }
+
+#conflict-counter { margin: 0 0 0.75rem; color: var(--page-muted); min-height: 1.5rem; }
