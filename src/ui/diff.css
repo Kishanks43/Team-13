@@ -7,7 +7,9 @@
   --diff-muted: #5b636e;
   --diff-border: #d0d7de;
   --diff-empty-bg: #f3f4f6;
+  --diff-selected-outline: #0969da;
 }
+
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -18,6 +20,7 @@
     --diff-muted: #9aa4af;
     --diff-border: #3a424d;
     --diff-empty-bg: #1c2128;
+    --diff-selected-outline: #388bfd;
   }
 }
 
@@ -83,3 +86,8 @@ tr.diff-changed td.mark { background: var(--diff-changed-bg); }
 
 tr.diff-removed td.empty,
 tr.diff-added td.empty { background: var(--diff-empty-bg); }
+
+/* Highlight the first row of the currently selected conflict in the diff table. */
+tr.conflict-selected td:first-child {
+  border-left: 3px solid var(--diff-selected-outline);
+}

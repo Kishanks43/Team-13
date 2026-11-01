@@ -1,8 +1,10 @@
 /**
  * Side-by-side view of a diff.
  *
- * buildRows(ops)        turns diff ops into aligned rows (pure data, easy to test)
- * renderSideBySide(rows) turns rows into an HTML table string
+ * buildRows(ops)                              turns diff ops into aligned rows (pure data, easy to test)
+ * renderSideBySide(rows)                      turns rows into an HTML table string
+ * renderSideBySideWithConflicts(rows, conflicts) same, but stamps data-conflict-id on the first <tr>
+ *                                             of each conflict so the page can scroll to it.
  *
  * Every changed row carries a text marker as well as a colour, so the view
  * never relies on colour alone:  " " same   "~" changed   "-" removed   "+" added
@@ -71,13 +73,46 @@ function sideCells(side) {
 
 /** Build the HTML table for a list of rows. */
 export function renderSideBySide(rows) {
+  return renderSideBySideWithConflicts(rows, []);
+}
+
+/**
+ * Build the HTML table, stamping data-conflict-id="N" on the first <tr> of
+ * each conflict so the page can scroll directly to that row.
+ *
+ * @param {Array} rows      - result of buildRows(ops)
+ * @param {Array} conflicts - result of findConflicts(ops); pass [] to skip annotation
+ */
+export function renderSideBySideWithConflicts(rows, conflicts) {
+  // Build a Set of row indices that start a conflict.
+  // A conflict's first row is the one whose left or right line number matches
+  // aStart or bStart respectively.
+  const conflictStartRows = new Map(); // rowIndex → conflictId
+  for (const conflict of conflicts) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.kind === "equal") continue;
+      const aMatch = row.left && row.left.num === conflict.aStart;
+      const bMatch = row.right && row.right.num === conflict.bStart;
+      if (aMatch || bMatch) {
+        if (!conflictStartRows.has(i)) {
+          conflictStartRows.set(i, conflict.id);
+        }
+        break;
+      }
+    }
+  }
+
   const body = rows
-    .map((row) => {
+    .map((row, i) => {
       const label = LABELS[row.kind];
       const mark = label
         ? `<td class="mark" title="${label}" aria-label="${label}">${row.marker}</td>`
         : '<td class="mark"></td>';
-      return `<tr class="diff-row diff-${row.kind}">${sideCells(row.left)}${mark}${sideCells(row.right)}</tr>`;
+      const conflictAttr = conflictStartRows.has(i)
+        ? ` data-conflict-id="${conflictStartRows.get(i)}"`
+        : "";
+      return `<tr class="diff-row diff-${row.kind}"${conflictAttr}>${sideCells(row.left)}${mark}${sideCells(row.right)}</tr>`;
     })
     .join("");
 
