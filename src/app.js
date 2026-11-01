@@ -4,13 +4,14 @@
  * The logic lives in createComparer() so it can be tested without a browser.
  */
 import { diffText, summarize } from "./engine/diff.js";
-import { buildRows, renderSideBySide } from "./ui/diffView.js";
+import { buildRows, renderSideBySideWithConflicts } from "./ui/diffView.js";
 import { samples, getSample } from "./samples.js";
 import { describeLines } from "./ui/paneInfo.js";
 import { loadFile } from "./fileLoader.js";
 import { createSession } from "./engine/session.js";
 import { formatProgress } from "./ui/progress.js";
 import { renderConflictList } from "./ui/conflictList.js";
+import { nextConflictId, prevConflictId, scrollConflictIntoView } from "./ui/conflictNav.js";
 
 /**
  * compare() runs the diff now and switches on "live" mode.
@@ -86,9 +87,43 @@ export function init(doc) {
   const counter = doc.getElementById("conflict-counter");
   const session = createSession();
   const conflictList = doc.getElementById("conflict-list");
+
+  /**
+   * Apply the conflict-selected CSS class to the diff row that starts the
+   * currently selected conflict, and scroll the diff output and conflict list
+   * to bring that row into view.
+   */
+  function applySelectionHighlight(state) {
+    // Remove any existing highlight.
+    for (const el of output.querySelectorAll(".conflict-selected")) {
+      el.classList.remove("conflict-selected");
+    }
+
+    if (state.selectedId === null) return;
+
+    // Highlight the diff row and scroll the diff pane.
+    const diffRow = output.querySelector(`[data-conflict-id="${state.selectedId}"]`);
+    if (diffRow) {
+      diffRow.classList.add("conflict-selected");
+      scrollConflictIntoView(output, diffRow);
+    }
+
+    // Scroll the conflict list to the selected item.
+    const listItem = conflictList.querySelector(`[data-conflict-id="${state.selectedId}"]`);
+    scrollConflictIntoView(conflictList, listItem);
+
+    // Scroll the merged result pane if it exists (added by S2-05).
+    const mergedEl = doc.getElementById("merged-result");
+    if (mergedEl) {
+      const mergedRow = mergedEl.querySelector(`[data-conflict-id="${state.selectedId}"]`);
+      scrollConflictIntoView(mergedEl, mergedRow);
+    }
+  }
+
   session.subscribe((state) => {
     counter.textContent = formatProgress(state.progress);
     conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
+    applySelectionHighlight(state);
   });
 
   // Clicking a conflict in the list selects it. The list is redrawn, so put the keyboard focus back.
@@ -101,13 +136,56 @@ export function init(doc) {
     if (again) again.focus();
   });
 
+  // Prev / Next buttons.
+  const prevBtn = doc.getElementById("prev-conflict-btn");
+  const nextBtn = doc.getElementById("next-conflict-btn");
+
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      const { conflicts, selectedId } = session.getState();
+      const id = prevConflictId(conflicts, selectedId);
+      if (id !== null) session.select(id);
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      const { conflicts, selectedId } = session.getState();
+      const id = nextConflictId(conflicts, selectedId);
+      if (id !== null) session.select(id);
+    });
+  }
+
+  // Keyboard shortcuts: [ = prev, ] = next.
+  // Suppressed when the focus is inside a textarea so editing is unaffected.
+  doc.addEventListener("keydown", (event) => {
+    if (event.target.tagName === "TEXTAREA" || event.target.tagName === "INPUT") return;
+    if (event.key === "[") {
+      const { conflicts, selectedId } = session.getState();
+      const id = prevConflictId(conflicts, selectedId);
+      if (id !== null) session.select(id);
+    } else if (event.key === "]") {
+      const { conflicts, selectedId } = session.getState();
+      const id = nextConflictId(conflicts, selectedId);
+      if (id !== null) session.select(id);
+    }
+  });
+
   const comparer = createComparer({
     getA: () => paneA.value,
     getB: () => paneB.value,
     render: (ops) => {
-      output.innerHTML = renderSideBySide(buildRows(ops));
-      summary.textContent = formatSummary(ops);
+      // Use the conflicts-aware renderer so rows get data-conflict-id attributes.
+      const rows = buildRows(ops);
+      // Load session first so we have the conflicts available.
       session.load(ops);
+      const { conflicts } = session.getState();
+      output.innerHTML = renderSideBySideWithConflicts(rows, conflicts);
+      summary.textContent = formatSummary(ops);
+      // Auto-select conflict 1 so the user can immediately start navigating.
+      if (conflicts.length > 0) {
+        session.select(conflicts[0].id);
+      }
     },
   });
 
