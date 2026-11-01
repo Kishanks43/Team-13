@@ -50,9 +50,11 @@
 
       <section class="conflicts" aria-label="Conflicts">
         <h2>Conflicts</h2>
-        <div class="conflict-nav-toolbar" role="toolbar" aria-label="Conflict navigation">
+        <div class="conflict-nav-toolbar" role="toolbar" aria-label="Conflict navigation and history">
           <button type="button" id="prev-conflict-btn" aria-label="Previous conflict ([)" title="Previous conflict ([)">&#8592; Prev</button>
           <button type="button" id="next-conflict-btn" aria-label="Next conflict (])" title="Next conflict (])">Next &#8594;</button>
+          <button type="button" id="undo-btn" disabled aria-keyshortcuts="Control+Z Meta+Z" title="Undo (Ctrl+Z / Cmd+Z)">Undo</button>
+          <button type="button" id="redo-btn" disabled aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" title="Redo (Ctrl+Y / Cmd+Shift+Z)">Redo</button>
         </div>
         <div id="conflict-list"></div>
       </section>

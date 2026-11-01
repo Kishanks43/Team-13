@@ -12,6 +12,7 @@ import { createSession } from "./engine/session.js";
 import { formatProgress } from "./ui/progress.js";
 import { renderConflictList } from "./ui/conflictList.js";
 import { nextConflictId, prevConflictId, scrollConflictIntoView } from "./ui/conflictNav.js";
+import { isTextEntry, undoRedoAction } from "./ui/undoKeys.js";
 
 /**
  * compare() runs the diff now and switches on "live" mode.
@@ -120,10 +121,19 @@ export function init(doc) {
     }
   }
 
+  const undoBtn = doc.getElementById("undo-btn");
+  const redoBtn = doc.getElementById("redo-btn");
+
+  function syncHistoryButtons(state) {
+    if (undoBtn) undoBtn.disabled = !state.canUndo;
+    if (redoBtn) redoBtn.disabled = !state.canRedo;
+  }
+
   session.subscribe((state) => {
     counter.textContent = formatProgress(state.progress);
     conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
     applySelectionHighlight(state);
+    syncHistoryButtons(state);
   });
 
   // Clicking a conflict in the list selects it. The list is redrawn, so put the keyboard focus back.
@@ -156,10 +166,33 @@ export function init(doc) {
     });
   }
 
-  // Keyboard shortcuts: [ = prev, ] = next.
-  // Suppressed when the focus is inside a textarea so editing is unaffected.
+  if (undoBtn) {
+    undoBtn.addEventListener("click", () => session.undo());
+  }
+
+  if (redoBtn) {
+    redoBtn.addEventListener("click", () => session.redo());
+  }
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo,
+  // [ = prev, ] = next. All are suppressed inside text fields, which keep their own undo.
   doc.addEventListener("keydown", (event) => {
-    if (event.target.tagName === "TEXTAREA" || event.target.tagName === "INPUT") return;
+    const historyAction = undoRedoAction(event);
+
+    if (historyAction === "undo") {
+      event.preventDefault();
+      session.undo();
+      return;
+    }
+
+    if (historyAction === "redo") {
+      event.preventDefault();
+      session.redo();
+      return;
+    }
+
+    if (isTextEntry(event.target)) return;
+
     if (event.key === "[") {
       const { conflicts, selectedId } = session.getState();
       const id = prevConflictId(conflicts, selectedId);

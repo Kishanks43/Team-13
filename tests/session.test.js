@@ -98,3 +98,116 @@ describe("createSession", () => {
     expect(elapsed).toBeLessThan(200);
   });
 });
+
+describe("session undo and redo", () => {
+  test("undo restores the previous decisions and notifies listeners", () => {
+    const session = loaded();
+    session.resolve(1, "A");
+    const seen = [];
+    session.subscribe((state) => seen.push(state.progress.resolved));
+
+    expect(session.undo()).toBe(true);
+    expect(session.getState().resolutions).toEqual({});
+    expect(session.getState().progress.resolved).toBe(0);
+    expect(seen).toEqual([0]);
+  });
+
+  test("redo reapplies the decision that was undone", () => {
+    const session = loaded();
+    session.resolve(2, "both");
+    session.undo();
+
+    expect(session.redo()).toBe(true);
+    expect(session.getState().resolutions).toEqual({ 2: "both" });
+    expect(session.getState().progress.resolved).toBe(1);
+  });
+
+  test("undo and redo do nothing when there is no history", () => {
+    const session = loaded();
+    expect(session.canUndo()).toBe(false);
+    expect(session.canRedo()).toBe(false);
+    expect(session.undo()).toBe(false);
+    expect(session.redo()).toBe(false);
+  });
+
+  test("a new decision after undo clears the redo stack", () => {
+    const session = loaded();
+    session.resolve(1, "A");
+    session.resolve(2, "B");
+    session.undo();
+    expect(session.canRedo()).toBe(true);
+
+    session.resolve(2, "both");
+    expect(session.canRedo()).toBe(false);
+    expect(session.getState().resolutions).toEqual({ 1: "A", 2: "both" });
+  });
+
+  test("loading a new diff clears the history", () => {
+    const session = loaded();
+    session.resolve(1, "A");
+    session.load(THREE);
+
+    expect(session.canUndo()).toBe(false);
+    expect(session.canRedo()).toBe(false);
+  });
+
+  test("restore replaces every decision and can itself be undone", () => {
+    const session = loaded();
+    session.restore({ 2: "B", 3: "manual" });
+
+    expect(session.getState().resolutions).toEqual({ 2: "B", 3: "manual" });
+    expect(session.getState().progress).toMatchObject({ resolved: 2, remaining: 1 });
+
+    expect(session.undo()).toBe(true);
+    expect(session.getState().resolutions).toEqual({});
+  });
+
+  test("restore refuses something that is not a plain object", () => {
+    const session = loaded();
+    expect(() => session.restore(null)).toThrow(TypeError);
+    expect(() => session.restore([])).toThrow(TypeError);
+  });
+
+  test("repeating the same decision does not add a history step", () => {
+    const session = loaded();
+    session.resolve(1, "A");
+    session.resolve(1, "A");
+
+    expect(session.undo()).toBe(true);
+    expect(session.getState().resolutions).toEqual({});
+    expect(session.canUndo()).toBe(false);
+  });
+
+  test("at least 50 decisions can be undone and redone", () => {
+    const a = Array.from({ length: 60 }, (_, i) => `same ${i}\nleft ${i}`).join("\n");
+    const b = Array.from({ length: 60 }, (_, i) => `same ${i}\nright ${i}`).join("\n");
+    const session = createSession();
+    session.load(diffText(a, b));
+    const ids = session.getState().conflicts.map((conflict) => conflict.id);
+    expect(ids).toHaveLength(60);
+
+    for (const id of ids) session.resolve(id, "A");
+    expect(session.getState().progress.resolved).toBe(60);
+
+    for (let i = 0; i < 60; i++) expect(session.undo()).toBe(true);
+    expect(session.getState().progress.resolved).toBe(0);
+    expect(session.canUndo()).toBe(false);
+
+    for (let i = 0; i < 60; i++) expect(session.redo()).toBe(true);
+    expect(session.getState().progress.resolved).toBe(60);
+    expect(session.canRedo()).toBe(false);
+  });
+
+  test("honours a custom history limit", () => {
+    const session = createSession({ historyLimit: 2 });
+    session.load(THREE);
+    session.resolve(1, "A");
+    session.resolve(2, "B");
+    session.resolve(3, "both");
+
+    expect(session.undo()).toBe(true);
+    expect(session.undo()).toBe(true);
+    expect(session.canUndo()).toBe(false);
+    expect(session.getState().resolutions).toEqual({ 1: "A" });
+  });
+});
