@@ -1,31 +1,28 @@
-# Web-Based Code Merge Simulator (Team 13)
+# S2-04-Accept-A-B-Both
 
-A browser tool that shows two versions of code side by side, highlights the differences, and lets you resolve each conflict by hand before producing one merged file.
+Accept A, Accept B, and Accept Both conflict-resolution controls.
 
-## Tech
-JavaScript (ES modules), HTML/CSS, Jest for tests, ESLint for linting, GitHub Actions for CI.
+## Contents
+- `src/` — source modules required by this story, including shared engine/UI dependencies.
+- `tests/` — relevant automated test file(s).
+- `package.json` and `eslint.config.js` — project scripts and tooling.
+- `index.html` — included for UI stories.
 
-## Getting started
-1. Clone the repo and run `npm install`
-2. `npm start` to serve the app, then open the address it prints
-3. `npm test` to run the tests
-4. `npm run lint` to check the code style
+## Run
+From this story folder:
 
-## Project layout
-```
-src/engine/   diff and merge logic (no browser code)
-src/ui/       rendering helpers
-src/samples.js  built-in sample scenarios
-tests/        Jest tests
-docs/         SRS and SAD
+```bash
+npm install
+npm test
+npm run lint
 ```
 
-## Team rules
-- One branch per story, named like `s1-04-file-loading`
-- Commit messages start with the story number, e.g. `S1-04: add file loading`
-- Every pull request needs one review and a green CI check
-- Write `Closes #<issue number>` in each pull request description
+For UI stories (S2-04 and S2-05), also run:
 
-## Docs
-- [SRS](docs/SRS_Team13.docx)
-- [SAD](docs/SAD_Team13_arch.docx)
+```bash
+npm start
+```
+
+Then open `http://localhost:8080`.
+
+This folder is self-contained; it does not depend on files outside this story folder.

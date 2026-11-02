@@ -1,35 +1,27 @@
-/**
- * The conflict list: one line per conflict showing where it is and its status
- * (Open, A, B, Both or Manual). Returns an HTML string; every item is a button with a
- * data-conflict-id, so the page can find out which conflict was clicked.
- */
 import { getStatus } from "../engine/resolutions.js";
-import { escapeHtml } from "./diffView.js";
 
-const LABELS = { open: "Open", A: "A", B: "B", both: "Both", manual: "Manual" };
-
-/** "A: lines 3-4", "B: line 7" or "A: none". */
-export function describeSide(name, start, count) {
-  if (count === 0) return `${name}: none`;
-  if (count === 1) return `${name}: line ${start}`;
-  return `${name}: lines ${start}-${start + count - 1}`;
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
 }
 
-/** Build the list for the current conflicts, decisions and selected conflict (selectedId may be null). */
-export function renderConflictList(conflicts, resolutions, selectedId = null) {
-  if (conflicts.length === 0) return '<p class="conflict-empty">No conflicts to list.</p>';
-
-  const items = conflicts.map((conflict) => {
+export function renderConflictList(conflicts, resolutions, selectedId) {
+  if (!conflicts.length) return '<p class="empty-state">No conflicts found. The versions are identical.</p>';
+  return conflicts.map((conflict) => {
     const status = getStatus(resolutions, conflict.id);
-    const current = conflict.id === selectedId ? ' aria-current="true"' : "";
-    const where = `${describeSide("A", conflict.aStart, conflict.aLines.length)}, ${describeSide("B", conflict.bStart, conflict.bLines.length)}`;
-    return (
-      `<li><button type="button" class="conflict-item status-${status}" data-conflict-id="${conflict.id}"${current}>` +
-      `<span class="conflict-name">Conflict ${conflict.id}</span>` +
-      `<span class="conflict-lines">${escapeHtml(where)}</span>` +
-      `<span class="conflict-status">${LABELS[status]}</span>` +
-      `</button></li>`
-    );
-  });
-  return `<ol class="conflict-list">${items.join("")}</ol>`;
+    const range = `A:${conflict.aStart} · B:${conflict.bStart}`;
+    const selected = conflict.id === selectedId ? " is-selected" : "";
+    const aText = escapeHtml(conflict.aLines.join("\n") || "(no lines)");
+    const bText = escapeHtml(conflict.bLines.join("\n") || "(no lines)");
+    return `<article class="conflict-card${selected}" data-conflict-id="${conflict.id}">
+      <div class="conflict-topline"><strong>Conflict ${conflict.id}</strong><span class="status status-${status.toLowerCase()}">${status === "both" ? "Both" : status === "open" ? "Open" : status}</span><span class="muted">${range}</span></div>
+      <div class="conflict-sides"><div><small>Version A</small><pre>${aText}</pre></div><div><small>Version B</small><pre>${bText}</pre></div></div>
+      <div class="resolution-actions">
+        <button type="button" class="button accept-button" data-action="A" data-id="${conflict.id}">Accept A</button>
+        <button type="button" class="button accept-button" data-action="B" data-id="${conflict.id}">Accept B</button>
+        <button type="button" class="button accept-button" data-action="both" data-id="${conflict.id}">Accept Both</button>
+      </div>
+    </article>`;
+  }).join("");
 }
