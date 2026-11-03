@@ -1,9 +1,10 @@
 # Included roadmap scope
 
-Source: `ROADMAP.md`, Sprint 2 section.
+Source: `ROADMAP.md`, Sprint 1 section.
 
-- S2-04 (#14): Accept A, B and Both buttons. The buttons call the shared session resolution state with `A`, `B`, or `both`. Accept Both contributes A lines then B lines.
-- S2-05 (#15): Editable Merged Result pane. Editing this pane must not write back into `pane-a` or `pane-b`.
-- S2-06 (#16): Tests prove the two input panes remain byte-for-byte unchanged after merge edits.
+- S1-05 (#5): Reject bad uploads. As a user, I want bad uploads rejected with a clear message so nothing breaks. Done when binary files and files over 2 MB are refused.
+- S2-11 (new issue): Fix S1-05 upload checks (bug fix). Done when binary files and files over 2 MB are refused, and the upload tests run in CI.
 
-The roadmap's shared contracts are represented in this package by `src/engine/conflicts.js`, `src/engine/resolutions.js`, and `src/engine/session.js`.
+Contract (from section 4): `loadFile(file)` resolves to `{ ok: true, name, text }` or `{ ok: false, name, error }` and never throws. It refuses binary files and files over 2 MB (`MAX_FILE_BYTES`).
+
+Shows the error in the page through the existing `note-a` and `note-b` elements (`textContent`, never `innerHTML`).

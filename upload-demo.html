@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S1-05 · Try the upload checks</title>
+  <style>
+    :root { color-scheme: light dark; --ok: #1b7a3d; --bad: #b3261e; }
+    @media (prefers-color-scheme: dark) { :root { --ok: #5fd38b; --bad: #ff8a80; } }
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    pre { max-height: 16rem; overflow: auto; padding: .75rem; border: 1px solid currentColor; border-radius: 8px; white-space: pre-wrap; }
+    #note { font-weight: 600; }
+    #note.ok { color: var(--ok); }
+    #note.bad { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <h1>Try the upload checks</h1>
+  <p>Choose a file. Text files load; binary files and files over 2 MB are refused with a message.</p>
+  <label for="file">File</label>
+  <input id="file" type="file">
+  <p id="note" role="status" aria-live="polite">No file chosen yet.</p>
+  <pre id="preview" aria-label="File preview"></pre>
+  <script type="module">
+    import { loadFile } from "./src/fileLoader.js";
+    const input = document.getElementById("file");
+    const note = document.getElementById("note");
+    const preview = document.getElementById("preview");
+    input.addEventListener("change", async () => {
+      const result = await loadFile(input.files[0]);
+      if (result.ok) {
+        const lines = result.text === "" ? 0 : result.text.split(/\r\n|\n|\r/).length;
+        note.textContent = `Loaded "${result.name}" (${lines} lines).`;
+        note.className = "ok";
+        preview.textContent = result.text.split(/\r\n|\n|\r/).slice(0, 30).join("\n");
+      } else {
+        note.textContent = result.error;
+        note.className = "bad";
+        preview.textContent = "";
+      }
+      input.value = ""; // lets the same file be chosen again
+    });
+  </script>
+</body>
+</html>
