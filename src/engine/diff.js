@@ -1,96 +1,79 @@
-/**
- * Line-based diff using Myers' O(ND) algorithm.
- *
- * Every item in a diff is an "op":
- *   { type: "equal" | "add" | "remove", text, aLine, bLine }
- * aLine / bLine are 1-based line numbers in Version A / Version B,
- * or null when the line does not exist on that side
- * (an added line has no aLine, a removed line has no bLine).
- */
+// Line diff (Myers O(ND)) with common prefix/suffix trimming. Pure logic, no browser APIs.
 
-/** Split text into lines, accepting LF, CRLF and CR. A trailing newline does not create an extra empty line. */
 export function splitLines(text) {
-  if (text === "") return [];
-  const lines = text.split(/\r\n|\r|\n/);
+  if (text === "" || text == null) return [];
+  const lines = String(text).split(/\r\n|\n|\r/);
   if (lines[lines.length - 1] === "") lines.pop();
   return lines;
 }
 
-/**
- * Core Myers search. Returns edits in forward order as
- * ["equal", aIndex, bIndex], ["remove", aIndex] or ["add", bIndex].
- */
-function myersEdits(a, b) {
+// Returns raw ops ({ type, text }) for two line arrays using Myers' algorithm.
+function myers(a, b) {
   const n = a.length;
   const m = b.length;
-  const edits = [];
-
-  if (n === 0) {
-    for (let j = 0; j < m; j++) edits.push(["add", j]);
-    return edits;
-  }
-  if (m === 0) {
-    for (let i = 0; i < n; i++) edits.push(["remove", i]);
-    return edits;
-  }
-
+  if (n === 0 && m === 0) return [];
   const max = n + m;
-  const offset = max + 1;
+  const off = max + 1;
   const v = new Int32Array(2 * max + 3);
   const trace = [];
+  let found = -1;
 
-  let done = false;
-  for (let d = 0; d <= max && !done; d++) {
-    // Save the state before round d (only the slice round d can read).
-    trace.push(v.slice(offset - d - 1, offset + d + 2));
+  for (let d = 0; d <= max; d++) {
     for (let k = -d; k <= d; k += 2) {
       let x;
-      if (k === -d || (k !== d && v[offset + k - 1] < v[offset + k + 1])) {
-        x = v[offset + k + 1];
+      if (k === -d || (k !== d && v[off + k - 1] < v[off + k + 1])) {
+        x = v[off + k + 1];
       } else {
-        x = v[offset + k - 1] + 1;
+        x = v[off + k - 1] + 1;
       }
       let y = x - k;
       while (x < n && y < m && a[x] === b[y]) {
         x++;
         y++;
       }
-      v[offset + k] = x;
+      v[off + k] = x;
       if (x >= n && y >= m) {
-        done = true;
+        found = d;
         break;
       }
     }
+    if (found >= 0) break;
+    trace.push(v.slice(off - d - 1, off + d + 2));
   }
 
-  // Walk back from the end to recover the edits.
+  const ops = [];
   let x = n;
   let y = m;
-  for (let d = trace.length - 1; d >= 0; d--) {
-    const saved = trace[d];
-    const at = (k) => saved[k + d + 1];
+  for (let d = found; d > 0; d--) {
+    const prev = trace[d - 1];
+    const at = (k) => prev[k + d]; // trace[d-1] covers k in [-d, d]
     const k = x - y;
     const prevK = k === -d || (k !== d && at(k - 1) < at(k + 1)) ? k + 1 : k - 1;
     const prevX = at(prevK);
     const prevY = prevX - prevK;
-
     while (x > prevX && y > prevY) {
-      edits.push(["equal", x - 1, y - 1]);
+      ops.push({ type: "equal", text: a[x - 1] });
       x--;
       y--;
     }
-    if (d > 0) {
-      if (x === prevX) edits.push(["add", prevY]);
-      else edits.push(["remove", prevX]);
+    if (x === prevX) {
+      ops.push({ type: "add", text: b[prevY] });
+    } else {
+      ops.push({ type: "remove", text: a[prevX] });
     }
     x = prevX;
     y = prevY;
   }
-  return edits.reverse();
+  while (x > 0 && y > 0) {
+    ops.push({ type: "equal", text: a[x - 1] });
+    x--;
+    y--;
+  }
+  return ops.reverse();
 }
 
-/** Inside each run of changes, list removals before additions so output reads the same way every time. */
-function orderChangeRuns(ops) {
+// Within a run of changes, put all removals before all additions.
+function orderRuns(ops) {
   const out = [];
   let i = 0;
   while (i < ops.length) {
@@ -98,16 +81,18 @@ function orderChangeRuns(ops) {
       out.push(ops[i++]);
       continue;
     }
-    const run = [];
-    while (i < ops.length && ops[i].type !== "equal") run.push(ops[i++]);
-    out.push(...run.filter((op) => op.type === "remove"), ...run.filter((op) => op.type === "add"));
+    const removes = [];
+    const adds = [];
+    while (i < ops.length && ops[i].type !== "equal") {
+      (ops[i].type === "remove" ? removes : adds).push(ops[i]);
+      i++;
+    }
+    out.push(...removes, ...adds);
   }
   return out;
 }
 
-/** Diff two arrays of lines. */
 export function diffLines(aLines, bLines) {
-  // Trim the common beginning and end first: it makes typical edits very fast.
   let start = 0;
   while (start < aLines.length && start < bLines.length && aLines[start] === bLines[start]) start++;
   let endA = aLines.length;
@@ -117,53 +102,53 @@ export function diffLines(aLines, bLines) {
     endB--;
   }
 
-  const ops = [];
-  for (let i = 0; i < start; i++) {
-    ops.push({ type: "equal", text: aLines[i], aLine: i + 1, bLine: i + 1 });
-  }
+  const raw = [
+    ...aLines.slice(0, start).map((text) => ({ type: "equal", text })),
+    ...orderRuns(myers(aLines.slice(start, endA), bLines.slice(start, endB))),
+    ...aLines.slice(endA).map((text) => ({ type: "equal", text }))
+  ];
 
-  const midA = aLines.slice(start, endA);
-  const midB = bLines.slice(start, endB);
-  for (const [type, p, q] of myersEdits(midA, midB)) {
-    if (type === "equal") {
-      ops.push({ type, text: midA[p], aLine: start + p + 1, bLine: start + q + 1 });
-    } else if (type === "remove") {
-      ops.push({ type, text: midA[p], aLine: start + p + 1, bLine: null });
-    } else {
-      ops.push({ type, text: midB[p], aLine: null, bLine: start + p + 1 });
+  let aLine = 0;
+  let bLine = 0;
+  return raw.map((op) => {
+    if (op.type === "equal") {
+      aLine++;
+      bLine++;
+      return { type: "equal", text: op.text, aLine, bLine };
     }
-  }
-
-  for (let i = endA; i < aLines.length; i++) {
-    ops.push({ type: "equal", text: aLines[i], aLine: i + 1, bLine: endB + (i - endA) + 1 });
-  }
-  return orderChangeRuns(ops);
+    if (op.type === "remove") {
+      aLine++;
+      return { type: "remove", text: op.text, aLine, bLine: null };
+    }
+    bLine++;
+    return { type: "add", text: op.text, aLine: null, bLine };
+  });
 }
 
-/** Diff two strings of text. */
 export function diffText(textA, textB) {
   return diffLines(splitLines(textA), splitLines(textB));
 }
 
-/** Count of added, removed and unchanged lines. */
 export function summarize(ops) {
-  const counts = { added: 0, removed: 0, unchanged: 0 };
+  const summary = { added: 0, removed: 0, unchanged: 0 };
   for (const op of ops) {
-    if (op.type === "add") counts.added++;
-    else if (op.type === "remove") counts.removed++;
-    else counts.unchanged++;
+    if (op.type === "add") summary.added++;
+    else if (op.type === "remove") summary.removed++;
+    else summary.unchanged++;
   }
-  return counts;
+  return summary;
 }
 
-/** Number of separate regions of change (runs of consecutive added/removed lines). */
 export function countChangeRegions(ops) {
   let regions = 0;
-  let inChange = false;
+  let inRun = false;
   for (const op of ops) {
-    const changed = op.type !== "equal";
-    if (changed && !inChange) regions++;
-    inChange = changed;
+    if (op.type === "equal") {
+      inRun = false;
+    } else if (!inRun) {
+      inRun = true;
+      regions++;
+    }
   }
   return regions;
 }

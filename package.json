@@ -1,23 +1,21 @@
 {
-  "name": "code-merge-simulator",
-  "version": "0.1.0",
-  "description": "Web-Based Code Merge Simulator: compare two versions of code side by side and resolve conflicts by hand.",
+  "name": "team-13-code-merge-simulator",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npx --yes serve .",
-    "lint": "eslint src tests --no-error-on-unmatched-pattern",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests"
+    "start": "npx http-server . -p 8080",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "http-server": "^14.1.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
   },
   "jest": {
     "testEnvironment": "node",
-    "transform": {}
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.13.0",
-    "globals": "^17.13.0",
-    "jest": "^30.5.2",
-    "jest-environment-jsdom": "^30.5.2"
+    "testMatch": ["**/tests/**/*.test.js"]
   }
 }

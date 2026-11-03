@@ -1,323 +1,137 @@
-
-/**
- * Page wiring: the Compare button, live re-compare after edits, and sample loading.
- * The logic lives in createComparer() so it can be tested without a browser.
- */
 import { diffText, summarize } from "./engine/diff.js";
-import { buildRows, renderSideBySideWithConflicts } from "./ui/diffView.js";
-import { samples, getSample } from "./samples.js";
-import { describeLines } from "./ui/paneInfo.js";
-import { loadFile } from "./fileLoader.js";
 import { createSession } from "./engine/session.js";
-import { formatProgress } from "./ui/progress.js";
+import { buildMergedText } from "./engine/merge.js";
 import { renderConflictList } from "./ui/conflictList.js";
-import { nextConflictId, prevConflictId, scrollConflictIntoView } from "./ui/conflictNav.js";
-import { isTextEntry, undoRedoAction } from "./ui/undoKeys.js";
+import { formatProgress } from "./ui/progress.js";
 
-/**
- * compare() runs the diff now and switches on "live" mode.
- * onEdit() calls it after every edit; once live, it re-runs the diff
- * shortly after the user stops typing.
- */
+// Runs the diff on demand, and again 300 ms after the user stops typing once
+// the first Compare has happened. Timers are injectable so tests need no clock.
 export function createComparer({
   getA,
   getB,
   render,
   delay = 300,
-  setTimer = setTimeout,
-  clearTimer = clearTimeout,
+  setTimer = (fn, ms) => window.setTimeout(fn, ms),
+  clearTimer = (id) => window.clearTimeout(id)
 }) {
   let live = false;
   let timer = null;
 
-  function compare() {
+  const compare = () => {
     if (timer !== null) {
       clearTimer(timer);
       timer = null;
     }
-
     live = true;
     const ops = diffText(getA(), getB());
     render(ops);
     return ops;
-  }
+  };
 
-  function onEdit() {
+  const onEdit = () => {
     if (!live) return;
-
-    if (timer !== null) {
-      clearTimer(timer);
-    }
-
+    if (timer !== null) clearTimer(timer);
     timer = setTimer(() => {
       timer = null;
       compare();
     }, delay);
-  }
+  };
 
   return { compare, onEdit, isLive: () => live };
 }
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-/** One-line summary such as "2 lines added, 1 line removed, 14 unchanged". */
 export function formatSummary(ops) {
   const { added, removed, unchanged } = summarize(ops);
-
-  if (added === 0 && removed === 0) {
-    return "The two versions are identical.";
-  }
-
-  return `${plural(added, "line")} added, ${plural(
-    removed,
-    "line"
-  )} removed, ${unchanged} unchanged`;
+  return `${added} added · ${removed} removed · ${unchanged} unchanged`;
 }
 
-/** Connect the page elements to the logic above. */
-export function init(doc) {
+const lineCount = (text) => (text === "" ? 0 : text.split(/\r\n|\n|\r/).length);
+
+export function init(doc = document, timers = {}) {
   const paneA = doc.getElementById("pane-a");
   const paneB = doc.getElementById("pane-b");
-  const output = doc.getElementById("diff-output");
-  const summary = doc.getElementById("diff-summary");
-  const compareBtn = doc.getElementById("compare-btn");
-  const sampleSelect = doc.getElementById("sample-select");
-  const loadSampleBtn = doc.getElementById("load-sample-btn");
-
-  // The session holds the conflicts and what has been decided about each. The counter follows it.
-  const counter = doc.getElementById("conflict-counter");
-  const session = createSession();
+  const compareButton = doc.getElementById("compare-btn");
+  const mergedResult = doc.getElementById("merged-result");
+  const conflictCounter = doc.getElementById("conflict-counter");
   const conflictList = doc.getElementById("conflict-list");
+  const countA = doc.getElementById("count-a");
+  const countB = doc.getElementById("count-b");
+  const mergeNote = doc.getElementById("merge-note");
+  const diffSummary = doc.getElementById("diff-summary"); // optional
+  const undoButton = doc.getElementById("undo-btn"); // optional
+  const redoButton = doc.getElementById("redo-btn"); // optional
+  const session = createSession();
+  let currentOps = [];
 
-  /**
-   * Apply the conflict-selected CSS class to the diff row that starts the
-   * currently selected conflict, and scroll the diff output and conflict list
-   * to bring that row into view.
-   */
-  function applySelectionHighlight(state) {
-    // Remove any existing highlight.
-    for (const el of output.querySelectorAll(".conflict-selected")) {
-      el.classList.remove("conflict-selected");
-    }
+  const updateCounts = () => {
+    countA.textContent = `${lineCount(paneA.value)} lines`;
+    countB.textContent = `${lineCount(paneB.value)} lines`;
+  };
 
-    if (state.selectedId === null) return;
-
-    // Highlight the diff row and scroll the diff pane.
-    const diffRow = output.querySelector(`[data-conflict-id="${state.selectedId}"]`);
-    if (diffRow) {
-      diffRow.classList.add("conflict-selected");
-      scrollConflictIntoView(output, diffRow);
-    }
-
-    // Scroll the conflict list to the selected item.
-    const listItem = conflictList.querySelector(`[data-conflict-id="${state.selectedId}"]`);
-    scrollConflictIntoView(conflictList, listItem);
-
-    // Scroll the merged result pane if it exists (added by S2-05).
-    const mergedEl = doc.getElementById("merged-result");
-    if (mergedEl) {
-      const mergedRow = mergedEl.querySelector(`[data-conflict-id="${state.selectedId}"]`);
-      scrollConflictIntoView(mergedEl, mergedRow);
-    }
-  }
-
-  const undoBtn = doc.getElementById("undo-btn");
-  const redoBtn = doc.getElementById("redo-btn");
-
-  function syncHistoryButtons(state) {
-    if (undoBtn) undoBtn.disabled = !state.canUndo;
-    if (redoBtn) redoBtn.disabled = !state.canRedo;
-  }
-
-  session.subscribe((state) => {
-    counter.textContent = formatProgress(state.progress);
+  // Runs on every session change (load, resolve, select). The counter updates here,
+  // synchronously, so it is never behind the compare debounce.
+  const render = (state) => {
+    conflictCounter.textContent = formatProgress(state.progress);
     conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
-    applySelectionHighlight(state);
-    syncHistoryButtons(state);
-  });
-
-  // Clicking a conflict in the list selects it. The list is redrawn, so put the keyboard focus back.
-  conflictList.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-conflict-id]");
-    if (!item) return;
-    const id = Number(item.dataset.conflictId);
-    session.select(id);
-    const again = conflictList.querySelector(`[data-conflict-id="${id}"]`);
-    if (again) again.focus();
-  });
-
-  // Prev / Next buttons.
-  const prevBtn = doc.getElementById("prev-conflict-btn");
-  const nextBtn = doc.getElementById("next-conflict-btn");
-
-  if (prevBtn) {
-    prevBtn.addEventListener("click", () => {
-      const { conflicts, selectedId } = session.getState();
-      const id = prevConflictId(conflicts, selectedId);
-      if (id !== null) session.select(id);
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      const { conflicts, selectedId } = session.getState();
-      const id = nextConflictId(conflicts, selectedId);
-      if (id !== null) session.select(id);
-    });
-  }
-
-  if (undoBtn) {
-    undoBtn.addEventListener("click", () => session.undo());
-  }
-
-  if (redoBtn) {
-    redoBtn.addEventListener("click", () => session.redo());
-  }
-
-  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo,
-  // [ = prev, ] = next. All are suppressed inside text fields, which keep their own undo.
-  doc.addEventListener("keydown", (event) => {
-    const historyAction = undoRedoAction(event);
-
-    if (historyAction === "undo") {
-      event.preventDefault();
-      session.undo();
-      return;
-    }
-
-    if (historyAction === "redo") {
-      event.preventDefault();
-      session.redo();
-      return;
-    }
-
-    if (isTextEntry(event.target)) return;
-
-    if (event.key === "[") {
-      const { conflicts, selectedId } = session.getState();
-      const id = prevConflictId(conflicts, selectedId);
-      if (id !== null) session.select(id);
-    } else if (event.key === "]") {
-      const { conflicts, selectedId } = session.getState();
-      const id = nextConflictId(conflicts, selectedId);
-      if (id !== null) session.select(id);
-    }
-  });
+    // Only a session change rebuilds the merged text. Typing in the merged pane
+    // never reaches this function, and nothing here ever writes to pane-a or pane-b.
+    mergedResult.value = buildMergedText(currentOps, state.conflicts, state.resolutions);
+    if (undoButton) undoButton.disabled = !session.canUndo();
+    if (redoButton) redoButton.disabled = !session.canRedo();
+  };
+  session.subscribe(render);
 
   const comparer = createComparer({
+    ...timers,
     getA: () => paneA.value,
     getB: () => paneB.value,
     render: (ops) => {
-      // Use the conflicts-aware renderer so rows get data-conflict-id attributes.
-      const rows = buildRows(ops);
-      // Load session first so we have the conflicts available.
+      currentOps = ops;
+      if (diffSummary) diffSummary.textContent = formatSummary(ops);
       session.load(ops);
-      const { conflicts } = session.getState();
-      output.innerHTML = renderSideBySideWithConflicts(rows, conflicts);
-      summary.textContent = formatSummary(ops);
-      // Auto-select conflict 1 so the user can immediately start navigating.
-      if (conflicts.length > 0) {
-        session.select(conflicts[0].id);
-      }
-    },
+      mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
+    }
   });
 
-  for (const sample of samples) {
-    const option = doc.createElement("option");
-    option.value = sample.id;
-    option.textContent = sample.name;
-    sampleSelect.appendChild(option);
-  }
+  compareButton.addEventListener("click", () => {
+    comparer.compare();
+    updateCounts();
+  });
 
-  // Each pane shows its current line count.
-  const countA = doc.getElementById("count-a");
-  const countB = doc.getElementById("count-b");
+  conflictList.addEventListener("click", (event) => {
+    const action = event.target.closest("button[data-action][data-id]");
+    if (action) {
+      session.resolve(Number(action.dataset.id), action.dataset.action);
+      return;
+    }
+    const select = event.target.closest("button[data-conflict-id]");
+    if (select) session.select(Number(select.dataset.conflictId));
+  });
 
-  function updateCounts() {
-    countA.textContent = describeLines(paneA.value);
-    countB.textContent = describeLines(paneB.value);
-  }
+  // S2-05 decision: a hand edit changes only the merged pane. It does not touch
+  // pane-a, pane-b or the resolution state. The next resolution click or
+  // re-compare rebuilds the merged text, so the note says so.
+  mergedResult.addEventListener("input", () => {
+    mergeNote.textContent =
+      "Edited by hand. Inputs are untouched. Choosing a resolution or re-comparing rebuilds this text.";
+  });
 
+  if (undoButton) undoButton.addEventListener("click", () => session.undo());
+  if (redoButton) redoButton.addEventListener("click", () => session.redo());
+
+  const onPaneInput = () => {
+    updateCounts();
+    comparer.onEdit();
+  };
+  paneA.addEventListener("input", onPaneInput);
+  paneB.addEventListener("input", onPaneInput);
   updateCounts();
 
-  compareBtn.addEventListener("click", comparer.compare);
-
-  for (const pane of [paneA, paneB]) {
-    pane.addEventListener("input", () => {
-      updateCounts();
-      comparer.onEdit();
-    });
-  }
-
-  // Load a file into the selected pane.
-  function wireFileLoading(pane, button, input, note) {
-    button.addEventListener("click", () => input.click());
-
-    input.addEventListener("change", async () => {
-      const file = input.files && input.files[0];
-
-      // Allow the same file to be selected again later.
-      input.value = "";
-
-      if (!file) return;
-
-      try {
-        const result = await loadFile(file);
-
-        note.classList.toggle("error", !result.ok);
-
-        if (!result.ok) {
-          note.textContent = result.error;
-          return;
-        }
-
-        pane.value = result.text;
-        note.textContent = `Loaded ${result.name}`;
-
-        updateCounts();
-        comparer.onEdit();
-      } catch (error) {
-        note.classList.add("error");
-        note.textContent =
-          error instanceof Error
-            ? error.message
-            : "Unable to load this file.";
-      }
-    });
-  }
-
-  wireFileLoading(
-    paneA,
-    doc.getElementById("load-a-btn"),
-    doc.getElementById("file-a"),
-    doc.getElementById("note-a")
-  );
-
-  wireFileLoading(
-    paneB,
-    doc.getElementById("load-b-btn"),
-    doc.getElementById("file-b"),
-    doc.getElementById("note-b")
-  );
-
-  // Load the selected built-in sample.
-  loadSampleBtn.addEventListener("click", () => {
-    const sample = getSample(sampleSelect.value);
-
-    if (!sample) return;
-
-    paneA.value = sample.a;
-    paneB.value = sample.b;
-
-    updateCounts();
-    comparer.compare();
-  });
-
-  return { comparer, session };
+  return { comparer, session, getOps: () => currentOps };
 }
 
-// Auto-start only on the real page. Tests import this module with the jest DOM and call
-// init(document) themselves once they have put the page markup in place.
+// Auto-start only on the real page. Tests import this module with an empty DOM and call
+// init(document) themselves once the page markup is in place.
 if (typeof document !== "undefined" && document.getElementById("compare-btn")) {
   init(document);
 }

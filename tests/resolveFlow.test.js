@@ -2,15 +2,17 @@
  * @jest-environment jsdom
  *
  * Integration tests for the resolve flow (S2-10). They mount the real index.html markup,
- * start the page with init(document), then drive it through the controls and the session
- * that init() returns: load a sample, resolve every conflict, undo, redo, and re-compare.
+ * start the page with init(document), then drive it through the page controls: load a
+ * comparison, resolve every conflict, undo and redo, and re-compare.
  */
 import { describe, test, expect } from "@jest/globals";
 import { readFileSync } from "node:fs";
 import { init } from "../src/app.js";
-import { getSample } from "../src/samples.js";
 
 const PAGE_HTML = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+
+const TWO_A = "top\nA1\nmid\nA2\nend";
+const TWO_B = "top\nB1\nmid\nB2\nend";
 
 /** Put a fresh copy of the page markup in the document, then wire it up. */
 function mountPage() {
@@ -19,10 +21,11 @@ function mountPage() {
   return init(document);
 }
 
-/** Pick a built-in sample and press Load sample. */
-function loadSample(id) {
-  document.getElementById("sample-select").value = id;
-  document.getElementById("load-sample-btn").click();
+/** Fill both panes and press Compare. */
+function compare(a, b) {
+  document.getElementById("pane-a").value = a;
+  document.getElementById("pane-b").value = b;
+  document.getElementById("compare-btn").click();
 }
 
 function counterText() {
@@ -30,126 +33,109 @@ function counterText() {
 }
 
 function statusOf(id) {
-  const item = document.querySelector(`#conflict-list [data-conflict-id="${id}"]`);
-  return item.querySelector(".conflict-status").textContent;
+  const select = document.querySelector(`#conflict-list [data-conflict-id="${id}"]`);
+  return select.closest(".conflict-item").querySelector(".status-badge").textContent;
 }
 
-function press(target, key, options = {}) {
-  target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...options }));
+function resolveWith(id, action) {
+  document.querySelector(`#conflict-list button[data-action="${action}"][data-id="${id}"]`).click();
 }
 
 describe("resolve flow (integration)", () => {
-  test("loads a sample, compares it and shows every conflict", () => {
+  test("loads two versions, compares them and shows every conflict", () => {
     const { session } = mountPage();
 
-    loadSample("separate-edits");
+    compare(TWO_A, TWO_B);
 
     const state = session.getState();
     expect(state.conflicts).toHaveLength(2);
     expect(state.progress).toMatchObject({ total: 2, resolved: 0, remaining: 2 });
 
-    const sample = getSample("separate-edits");
-    expect(document.getElementById("pane-a").value).toBe(sample.a);
-    expect(document.getElementById("pane-b").value).toBe(sample.b);
-    expect(document.getElementById("diff-summary").textContent).not.toBe("");
+    expect(document.getElementById("pane-a").value).toBe(TWO_A);
+    expect(document.getElementById("pane-b").value).toBe(TWO_B);
+    expect(counterText()).toBe("2 total · 0 resolved · 2 remaining");
 
-    expect(counterText()).toBe("Conflicts: 2 total, 0 resolved, 2 remaining");
+    const items = document.querySelectorAll("#conflict-list .conflict-item");
+    expect(items).toHaveLength(2);
+    expect(statusOf(1)).toBe("Open");
+    expect(statusOf(2)).toBe("Open");
+    expect(document.getElementById("merged-result").value).toBe("top\nmid\nend");
 
-    const listItems = document.querySelectorAll("#conflict-list [data-conflict-id]");
-    expect(listItems).toHaveLength(2);
-    expect([...listItems].map((item) => item.querySelector(".conflict-status").textContent)).toEqual([
-      "Open",
-      "Open",
-    ]);
-
-    const diffRows = document.querySelectorAll("#diff-output [data-conflict-id]");
-    expect(diffRows).toHaveLength(2);
+    expect(document.getElementById("undo-btn").disabled).toBe(true);
+    expect(document.getElementById("redo-btn").disabled).toBe(true);
   });
 
-  test("resolving conflicts updates the counter, the list and the history", () => {
+  test("Accept A, B and Both resolve conflicts and rebuild the merged result", () => {
     const { session } = mountPage();
-    loadSample("separate-edits");
+    compare(TWO_A, TWO_B);
 
-    session.resolve(1, "A");
-    expect(counterText()).toBe("Conflicts: 2 total, 1 resolved, 1 remaining");
+    resolveWith(1, "A");
+    expect(counterText()).toBe("2 total · 1 resolved · 1 remaining");
     expect(statusOf(1)).toBe("A");
     expect(statusOf(2)).toBe("Open");
+    expect(document.getElementById("merged-result").value).toBe("top\nA1\nmid\nend");
 
-    session.resolve(2, "both");
-    expect(counterText()).toBe("Conflicts: 2 total, 2 resolved, 0 remaining");
+    resolveWith(2, "both");
+    expect(counterText()).toBe("2 total · 2 resolved · 0 remaining");
     expect(statusOf(2)).toBe("Both");
+    expect(document.getElementById("merged-result").value).toBe("top\nA1\nmid\nA2\nB2\nend");
 
     expect(session.getState().progress).toMatchObject({ total: 2, resolved: 2, remaining: 0 });
-    expect(session.canUndo()).toBe(true);
+    expect(document.getElementById("undo-btn").disabled).toBe(false);
+    expect(document.getElementById("redo-btn").disabled).toBe(true);
+
+    expect(document.getElementById("pane-a").value).toBe(TWO_A);
+    expect(document.getElementById("pane-b").value).toBe(TWO_B);
   });
 
-  test("resolving every conflict and then re-comparing reopens the flow", () => {
-    const { session } = mountPage();
-    loadSample("separate-edits");
-
-    for (const conflict of session.getState().conflicts) session.resolve(conflict.id, "A");
-    expect(session.getState().progress).toMatchObject({ resolved: 2, remaining: 0 });
-    expect(counterText()).toBe("Conflicts: 2 total, 2 resolved, 0 remaining");
-
-    loadSample("separate-edits");
-    expect(session.getState().progress).toMatchObject({ resolved: 0, remaining: 2 });
-    expect(counterText()).toBe("Conflicts: 2 total, 0 resolved, 2 remaining");
-    expect(session.canUndo()).toBe(false);
-    expect(statusOf(1)).toBe("Open");
-  });
-
-  test("the undo and redo buttons walk back and forth through the whole flow", () => {
-    const { session } = mountPage();
-    loadSample("separate-edits");
+  test("undo and redo buttons walk back and forth through the resolve flow", () => {
+    mountPage();
+    compare(TWO_A, TWO_B);
 
     const undoBtn = document.getElementById("undo-btn");
     const redoBtn = document.getElementById("redo-btn");
-    expect(undoBtn.disabled).toBe(true);
-    expect(redoBtn.disabled).toBe(true);
+    const merged = document.getElementById("merged-result");
 
-    session.resolve(1, "A");
-    session.resolve(2, "B");
-    expect(session.getState().progress).toMatchObject({ resolved: 2, remaining: 0 });
+    resolveWith(1, "A");
+    resolveWith(2, "B");
+    expect(merged.value).toBe("top\nA1\nmid\nB2\nend");
+    expect(undoBtn.disabled).toBe(false);
 
     undoBtn.click();
-    expect(session.getState().progress).toMatchObject({ resolved: 1, remaining: 1 });
+    expect(counterText()).toBe("2 total · 1 resolved · 1 remaining");
     expect(statusOf(2)).toBe("Open");
+    expect(merged.value).toBe("top\nA1\nmid\nend");
     expect(redoBtn.disabled).toBe(false);
 
-    redoBtn.click();
-    expect(session.getState().progress).toMatchObject({ resolved: 2, remaining: 0 });
-    expect(statusOf(2)).toBe("B");
+    undoBtn.click();
+    expect(counterText()).toBe("2 total · 0 resolved · 2 remaining");
+    expect(statusOf(1)).toBe("Open");
+    expect(merged.value).toBe("top\nmid\nend");
+    expect(undoBtn.disabled).toBe(true);
 
-    undoBtn.click();
-    undoBtn.click();
-    expect(session.getState().progress).toMatchObject({ resolved: 0, remaining: 2 });
+    redoBtn.click();
+    redoBtn.click();
+    expect(counterText()).toBe("2 total · 2 resolved · 0 remaining");
+    expect(statusOf(1)).toBe("A");
+    expect(statusOf(2)).toBe("B");
+    expect(merged.value).toBe("top\nA1\nmid\nB2\nend");
+    expect(redoBtn.disabled).toBe(true);
+  });
+
+  test("re-comparing reopens every conflict and clears the history", () => {
+    const { session } = mountPage();
+    compare(TWO_A, TWO_B);
+    resolveWith(1, "A");
+    resolveWith(2, "B");
+    expect(session.getState().progress.remaining).toBe(0);
+
+    document.getElementById("compare-btn").click();
+
+    expect(session.getState().progress).toMatchObject({ total: 2, resolved: 0, remaining: 2 });
+    expect(counterText()).toBe("2 total · 0 resolved · 2 remaining");
     expect(statusOf(1)).toBe("Open");
     expect(statusOf(2)).toBe("Open");
-    expect(undoBtn.disabled).toBe(true);
-  });
-
-  test("Ctrl+Z and Ctrl+Y undo and redo outside a text field", () => {
-    const { session } = mountPage();
-    loadSample("same-line-conflict");
-    session.resolve(1, "A");
-
-    press(document.body, "z", { ctrlKey: true });
-    expect(session.getState().progress).toMatchObject({ resolved: 0, remaining: 1 });
-    expect(statusOf(1)).toBe("Open");
-
-    press(document.body, "y", { ctrlKey: true });
-    expect(session.getState().progress).toMatchObject({ resolved: 1, remaining: 0 });
-    expect(statusOf(1)).toBe("A");
-  });
-
-  test("keyboard undo is left alone while the focus is in an input pane", () => {
-    const { session } = mountPage();
-    loadSample("same-line-conflict");
-    session.resolve(1, "A");
-
-    press(document.getElementById("pane-a"), "z", { ctrlKey: true });
-
-    expect(session.getState().progress).toMatchObject({ resolved: 1, remaining: 0 });
-    expect(statusOf(1)).toBe("A");
+    expect(document.getElementById("undo-btn").disabled).toBe(true);
+    expect(document.getElementById("redo-btn").disabled).toBe(true);
   });
 });
