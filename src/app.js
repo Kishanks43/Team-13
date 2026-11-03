@@ -47,6 +47,16 @@ export function formatSummary(ops) {
 
 const lineCount = (text) => (text === "" ? 0 : text.split(/\r\n|\n|\r/).length);
 
+// The note under the merged pane. Open conflicts appear there with Git-style markers (S3-04).
+function describeMerge(progress) {
+  if (progress.total === 0) return "No conflicts. The merged result is the same as both versions.";
+  if (progress.remaining > 0) {
+    const noun = progress.remaining === 1 ? "conflict is" : "conflicts are";
+    return `${progress.remaining} open ${noun} shown with Git-style markers (<<<<<<<, =======, >>>>>>>). Resolve each one to remove its markers.`;
+  }
+  return "All conflicts resolved. You can still edit the merged result.";
+}
+
 export function init(doc = document, timers = {}) {
   const paneA = doc.getElementById("pane-a");
   const paneB = doc.getElementById("pane-b");
@@ -74,6 +84,7 @@ export function init(doc = document, timers = {}) {
     // Only a session change rebuilds the merged text. Typing in the merged pane
     // never reaches this function, and nothing here ever writes to pane-a or pane-b.
     mergedResult.value = buildMergedText(currentOps, state.conflicts, state.resolutions);
+    mergeNote.textContent = describeMerge(state.progress);
   };
   session.subscribe(render);
 
@@ -85,7 +96,6 @@ export function init(doc = document, timers = {}) {
       currentOps = ops;
       if (diffSummary) diffSummary.textContent = formatSummary(ops);
       session.load(ops);
-      mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
     }
   });
 

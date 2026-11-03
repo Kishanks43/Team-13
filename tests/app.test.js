@@ -87,7 +87,18 @@ describe("init", () => {
     expect(session.getState().conflicts).toHaveLength(1);
     expect(doc.elements["conflict-counter"].textContent).toBe("1 total · 0 resolved · 1 remaining");
     expect(doc.elements["conflict-list"].innerHTML).toContain('data-conflict-id="1"');
-    expect(doc.elements["merged-result"].value).toBe("a\nc");
+    expect(doc.elements["merged-result"].value).toBe("a\n<<<<<<< A\nb\n=======\nB\n>>>>>>> B\nc");
+  });
+
+  test("the note explains the markers and follows the open count", () => {
+    const { doc } = setup("a\nb\nc\nd\ne", "a\nB\nc\nD\ne");
+    const note = doc.elements["merge-note"];
+    expect(note.textContent).toContain("2 open conflicts are shown with Git-style markers");
+    doc.elements["conflict-list"].dispatch("click", actionClick("A", 1));
+    expect(note.textContent).toContain("1 open conflict is shown");
+    doc.elements["conflict-list"].dispatch("click", actionClick("B", 2));
+    expect(note.textContent).toContain("All conflicts resolved");
+    expect(doc.elements["merged-result"].value).toBe("a\nb\nc\nD\ne");
   });
 
   test("identical versions show 'No conflicts.'", () => {

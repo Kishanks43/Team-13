@@ -13,8 +13,14 @@ describe("buildMergedText", () => {
     expect(conflicts).toHaveLength(2);
   });
 
-  test("open conflicts contribute nothing yet; equal lines are copied", () => {
-    expect(buildMergedText(ops, conflicts, {})).toBe("top\nmiddle\nbottom");
+  test("open conflicts show Git-style markers; equal lines are copied", () => {
+    expect(buildMergedText(ops, conflicts, {})).toBe(
+      "top\n<<<<<<< A\nA1\nA2\n=======\nB1\n>>>>>>> B\nmiddle\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nbottom"
+    );
+  });
+
+  test("with markers turned off, open conflicts contribute nothing", () => {
+    expect(buildMergedText(ops, conflicts, {}, { markers: false })).toBe("top\nmiddle\nbottom");
   });
 
   test("Accept A inserts exactly the A lines", () => {
@@ -33,6 +39,12 @@ describe("buildMergedText", () => {
 
   test("each conflict is resolved independently", () => {
     expect(buildMergedText(ops, conflicts, { 1: "B", 2: "A" })).toBe("top\nB1\nmiddle\nA3\nbottom");
+  });
+
+  test("resolving one conflict removes only its markers", () => {
+    expect(buildMergedText(ops, conflicts, { 1: "A" })).toBe(
+      "top\nA1\nA2\nmiddle\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nbottom"
+    );
   });
 
   test("identical inputs merge to the same text", () => {

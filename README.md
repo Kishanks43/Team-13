@@ -1,57 +1,53 @@
-# Code Merge Simulator: story notes
+# S3-04-Git-Style-Conflict-Markers
 
-Run these from the repository root:
+Show unresolved conflicts in the merged text with Git-style markers so they are easy to recognise
+(roadmap story S3-04, issue #24). Done when open conflicts show the standard markers
+(`<<<<<<<`, `=======`, `>>>>>>>`).
+
+## What it does
+An open conflict appears in the Merged Result like this:
+
+```
+<<<<<<< A
+(A lines)
+=======
+(B lines)
+>>>>>>> B
+```
+
+- The markers are removed as soon as that conflict is resolved (Accept A, B or Both). Other conflicts keep theirs.
+- A conflict that is only an addition or only a deletion keeps the block, with an empty A or B side, as Git does.
+- A conflict marked `manual` adds nothing to the built text, because its hand-written text lives in the editable pane.
+- `buildMergedText(ops, conflicts, resolutions, { markers: false })` gives the old behaviour (open conflicts add nothing).
+- `countConflictMarkers(text)` and `hasConflictMarkers(text)` find markers left in a text. S3-07 (Apply Merge guard)
+  should use `hasConflictMarkers`, so a half-deleted block still counts as unresolved. A lone `=======` line is ignored,
+  because it is a normal line in many files (for example a Markdown heading underline).
+- The note under the merged pane explains the markers and shows how many conflicts are still open.
+
+## Contents
+- `src/engine/merge.js` — the marker logic (`CONFLICT_MARKERS`, `markerLines`, `countConflictMarkers`, `hasConflictMarkers`).
+- `src/app.js` — page wiring; only the note under the merged pane is new.
+- `tests/conflictMarkers.test.js` — the S3-04 tests, including random (property-style) ones.
+- `tests/merge.test.js`, `tests/app.test.js` — updated, because open conflicts no longer add nothing.
+- `src/`, `tests/` — the rest of the project, so the whole suite stays green in CI.
+- `package.json` and `eslint.config.js` — project scripts and tooling.
+- `index.html` — the page, so you can try the story by hand.
+
+## Run
+From this story folder:
 
 ```bash
 npm install
 npm test
 npm run lint
+```
+
+To try the page by hand:
+
+```bash
 npm start
 ```
 
-Then open `http://localhost:8080` for the main page, or `http://localhost:8080/upload-demo.html` to try the upload checks.
+Then open `http://localhost:8080`, paste two versions that differ, and press Compare.
 
-## S1-05: Reject bad uploads
-
-Reject bad uploads with a clear message so nothing breaks (roadmap story S1-05, issue #5).
-Binary files and files over 2 MB are refused. This also covers the S2-11 bug fix, which restores
-these checks in `src/fileLoader.js`.
-
-`loadFile(file)` resolves to `{ ok: true, name, text }` or `{ ok: false, name, error }` and never throws.
-It refuses:
-- files over 2 MB (`MAX_FILE_BYTES`). The size is checked before reading, and again on the bytes
-  actually read, because a reported size can be wrong.
-- binary files: known signatures (PDF, PNG, JPEG, GIF, ZIP, gzip, executables), any NUL byte, or
-  many control characters at the start of the file.
-- UTF-16 text and text that is not valid UTF-8, each with its own message.
-
-Text files load exactly as written (line endings, tabs, unicode). A 500-line file loads in well under 1 second.
-
-Files:
-- `src/fileLoader.js` — the loader and its checks.
-- `tests/fileLoader.test.js` — 38 tests, including random (property-style) ones.
-- `upload-demo.html` — a small page to try the checks by hand.
-
-## S2-06: Tests for untouched input panes
-
-Tests proving that Version A and Version B stay byte-for-byte unchanged by any merge edit
-(roadmap story S2-06, issue #16).
-
-What the tests prove:
-- Resolving conflicts (Accept A, B, Both), selecting conflicts, editing the merged pane by hand,
-  and re-comparing never change `pane-a` or `pane-b`.
-- The app never even writes to the input panes (write counters stay at zero).
-- Exact bytes are kept for tricky text: CRLF and lone CR, trailing newlines, tabs, a byte order mark,
-  unicode, 5,000-character lines, empty and identical inputs.
-- A seeded random (property-style) test runs 150 sessions of 25 random actions each.
-- The engine never changes its inputs: diffing, conflict finding, merging and the session are run on
-  deep-frozen data, so any in-place change would throw.
-
-Files:
-- `tests/inputsUntouched.test.js` — the S2-06 tests.
-- `tests/helpers/` — `fakeDom.js` (a small stand-in for the page) and `seeded.js` (repeatable random numbers).
-- `index.html` — the page, so you can try the story by hand.
-
-## Tooling
-
-`package.json` and `eslint.config.js` hold the project scripts and tooling. CI runs `npm ci`, `npm test` and `npm run lint` on Node 22.
+This folder is self-contained; it does not depend on files outside this story folder.
