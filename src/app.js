@@ -316,6 +316,8 @@ export function init(doc) {
   return { comparer, session };
 }
 
-if (typeof document !== "undefined") {
+// Auto-start only on the real page. Tests import this module with the jest DOM and call
+// init(document) themselves once they have put the page markup in place.
+if (typeof document !== "undefined" && document.getElementById("compare-btn")) {
   init(document);
 }
