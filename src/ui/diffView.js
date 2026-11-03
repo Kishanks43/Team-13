@@ -1,19 +1,5 @@
-/**
- * Side-by-side view of a diff.
- *
- * buildRows(ops)                              turns diff ops into aligned rows (pure data, easy to test)
- * renderSideBySide(rows)                      turns rows into an HTML table string
- * renderSideBySideWithConflicts(rows, conflicts) same, but stamps data-conflict-id on the first <tr>
- *                                             of each conflict so the page can scroll to it.
- *
- * Every changed row carries a text marker as well as a colour, so the view
- * never relies on colour alone:  " " same   "~" changed   "-" removed   "+" added
- */
+// Rendering helpers for the side-by-side diff view.
 
-const MARKERS = { equal: " ", changed: "~", removed: "-", added: "+" };
-const LABELS = { equal: "", changed: "changed", removed: "removed", added: "added" };
-
-/** Make text safe to place inside HTML, so pasted code is shown as text and never run. */
 export function escapeHtml(text) {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -23,103 +9,56 @@ export function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
-function makeRow(kind, left, right) {
-  return { kind, marker: MARKERS[kind], left, right };
-}
-
-/**
- * Pair up diff ops into side-by-side rows.
- * Inside a change, the first removed line is shown next to the first added line
- * (a "changed" row); leftovers are shown alone as "removed" or "added".
- */
+// Pairs removed and added lines inside a change run into "changed" rows.
 export function buildRows(ops) {
   const rows = [];
   let i = 0;
   while (i < ops.length) {
     const op = ops[i];
     if (op.type === "equal") {
-      rows.push(makeRow("equal", { num: op.aLine, text: op.text }, { num: op.bLine, text: op.text }));
+      rows.push({ type: "equal", aLine: op.aLine, bLine: op.bLine, aText: op.text, bText: op.text });
       i++;
       continue;
     }
-
-    const removed = [];
-    const added = [];
+    const removes = [];
+    const adds = [];
     while (i < ops.length && ops[i].type !== "equal") {
-      (ops[i].type === "remove" ? removed : added).push(ops[i]);
+      (ops[i].type === "remove" ? removes : adds).push(ops[i]);
       i++;
     }
-
-    const paired = Math.min(removed.length, added.length);
-    for (let p = 0; p < paired; p++) {
-      rows.push(
-        makeRow("changed", { num: removed[p].aLine, text: removed[p].text }, { num: added[p].bLine, text: added[p].text })
-      );
-    }
-    for (let p = paired; p < removed.length; p++) {
-      rows.push(makeRow("removed", { num: removed[p].aLine, text: removed[p].text }, null));
-    }
-    for (let p = paired; p < added.length; p++) {
-      rows.push(makeRow("added", null, { num: added[p].bLine, text: added[p].text }));
+    const length = Math.max(removes.length, adds.length);
+    for (let j = 0; j < length; j++) {
+      const r = removes[j];
+      const a = adds[j];
+      let type = "changed";
+      if (r && !a) type = "remove";
+      else if (a && !r) type = "add";
+      rows.push({
+        type,
+        aLine: r ? r.aLine : null,
+        bLine: a ? a.bLine : null,
+        aText: r ? r.text : "",
+        bText: a ? a.text : ""
+      });
     }
   }
   return rows;
 }
 
-function sideCells(side) {
-  if (!side) return '<td class="num"></td><td class="code empty"></td>';
-  return `<td class="num">${side.num}</td><td class="code">${escapeHtml(side.text)}</td>`;
-}
+const MARKERS = { equal: " ", add: "+", remove: "-", changed: "~" };
 
-/** Build the HTML table for a list of rows. */
 export function renderSideBySide(rows) {
-  return renderSideBySideWithConflicts(rows, []);
-}
-
-/**
- * Build the HTML table, stamping data-conflict-id="N" on the first <tr> of
- * each conflict so the page can scroll directly to that row.
- *
- * @param {Array} rows      - result of buildRows(ops)
- * @param {Array} conflicts - result of findConflicts(ops); pass [] to skip annotation
- */
-export function renderSideBySideWithConflicts(rows, conflicts) {
-  // Build a Set of row indices that start a conflict.
-  // A conflict's first row is the one whose left or right line number matches
-  // aStart or bStart respectively.
-  const conflictStartRows = new Map(); // rowIndex → conflictId
-  for (const conflict of conflicts) {
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (row.kind === "equal") continue;
-      const aMatch = row.left && row.left.num === conflict.aStart;
-      const bMatch = row.right && row.right.num === conflict.bStart;
-      if (aMatch || bMatch) {
-        if (!conflictStartRows.has(i)) {
-          conflictStartRows.set(i, conflict.id);
-        }
-        break;
-      }
-    }
-  }
-
   const body = rows
-    .map((row, i) => {
-      const label = LABELS[row.kind];
-      const mark = label
-        ? `<td class="mark" title="${label}" aria-label="${label}">${row.marker}</td>`
-        : '<td class="mark"></td>';
-      const conflictAttr = conflictStartRows.has(i)
-        ? ` data-conflict-id="${conflictStartRows.get(i)}"`
-        : "";
-      return `<tr class="diff-row diff-${row.kind}"${conflictAttr}>${sideCells(row.left)}${mark}${sideCells(row.right)}</tr>`;
-    })
+    .map(
+      (row) =>
+        `<tr class="row-${row.type}">` +
+        `<td class="num">${row.aLine ?? ""}</td>` +
+        `<td class="code">${escapeHtml(row.aText)}</td>` +
+        `<td class="marker">${MARKERS[row.type]}</td>` +
+        `<td class="num">${row.bLine ?? ""}</td>` +
+        `<td class="code">${escapeHtml(row.bText)}</td>` +
+        `</tr>`
+    )
     .join("");
-
-  return (
-    '<table class="diff" aria-label="Side-by-side comparison of Version A and Version B">' +
-    '<colgroup><col class="c-num"><col class="c-code"><col class="c-mark"><col class="c-num"><col class="c-code"></colgroup>' +
-    '<thead><tr><th colspan="2" scope="colgroup">Version A</th><th class="mark"></th><th colspan="2" scope="colgroup">Version B</th></tr></thead>' +
-    `<tbody>${body}</tbody></table>`
-  );
+  return `<table class="diff-table"><tbody>${body}</tbody></table>`;
 }

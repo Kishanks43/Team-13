@@ -1,49 +1,32 @@
-/**
- * Resolution state: what the user has decided for each conflict.
- *
- * The state is a plain object that maps a conflict id to a status. A conflict that is not in the
- * object is "open". The functions below never change the object they are given; they return a new
- * one, so older states can be kept as snapshots (this is what undo and redo will use).
- *
- * Statuses:
- *   "open"    not resolved yet
- *   "A"       the user took Version A's lines
- *   "B"       the user took Version B's lines
- *   "both"    the user took A's lines followed by B's lines
- *   "manual"  the user edited the merged text by hand
- * Everything except "open" counts as resolved.
- */
+// A resolution state is a plain object { [conflictId]: status }. A missing id means "open".
+// States are never changed in place, so keeping an old one is a snapshot (used by undo/redo).
 
-export const STATUSES = ["open", "A", "B", "both", "manual"];
+export const STATUSES = Object.freeze(["open", "A", "B", "both", "manual"]);
 
-/** A fresh state in which every conflict is open. */
+export function isStatus(status) {
+  return STATUSES.includes(status);
+}
+
 export function createResolutions() {
   return {};
 }
 
-/** The status of one conflict. */
-export function getStatus(resolutions, id) {
-  return resolutions[id] ?? "open";
+export function getStatus(res, id) {
+  return Object.prototype.hasOwnProperty.call(res, id) ? res[id] : "open";
 }
 
-/** Return a new state with one conflict set to a status. Throws if the status is not recognised. */
-export function setStatus(resolutions, id, status) {
-  if (!STATUSES.includes(status)) {
-    throw new RangeError(`Unknown status "${status}". Use one of: ${STATUSES.join(", ")}.`);
+export function setStatus(res, id, status) {
+  if (!isStatus(status)) {
+    throw new RangeError(`Unknown resolution status: ${status}`);
   }
-  const next = { ...resolutions };
-  if (status === "open") delete next[id];
-  else next[id] = status;
-  return next;
+  return { ...res, [id]: status };
 }
 
-/**
- * Count progress over a list of conflicts. Entries for ids that are not in the list are ignored.
- * Returns { total, resolved, remaining, byStatus: { open, A, B, both, manual } }.
- */
-export function summarizeProgress(conflicts, resolutions) {
+export function summarizeProgress(conflicts, res) {
   const byStatus = { open: 0, A: 0, B: 0, both: 0, manual: 0 };
-  for (const conflict of conflicts) byStatus[getStatus(resolutions, conflict.id)]++;
+  for (const conflict of conflicts) {
+    byStatus[getStatus(res, conflict.id)]++;
+  }
   const total = conflicts.length;
   const remaining = byStatus.open;
   return { total, resolved: total - remaining, remaining, byStatus };

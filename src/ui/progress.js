@@ -1,5 +1,5 @@
-/** Text for the conflict counter, e.g. "Conflicts: 3 total, 1 resolved, 2 remaining". */
-export function formatProgress({ total, resolved, remaining }) {
-  if (total === 0) return "No conflicts.";
-  return `Conflicts: ${total} total, ${resolved} resolved, ${remaining} remaining`;
+// Builds the text for the live conflict counter.
+export function formatProgress(progress) {
+  if (!progress || !progress.total) return "No conflicts.";
+  return `${progress.total} total · ${progress.resolved} resolved · ${progress.remaining} remaining`;
 }
