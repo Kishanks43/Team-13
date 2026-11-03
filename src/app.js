@@ -58,6 +58,8 @@ export function init(doc = document, timers = {}) {
   const countB = doc.getElementById("count-b");
   const mergeNote = doc.getElementById("merge-note");
   const diffSummary = doc.getElementById("diff-summary"); // optional
+  const undoButton = doc.getElementById("undo-btn"); // optional
+  const redoButton = doc.getElementById("redo-btn"); // optional
   const session = createSession();
   let currentOps = [];
 
@@ -74,6 +76,8 @@ export function init(doc = document, timers = {}) {
     // Only a session change rebuilds the merged text. Typing in the merged pane
     // never reaches this function, and nothing here ever writes to pane-a or pane-b.
     mergedResult.value = buildMergedText(currentOps, state.conflicts, state.resolutions);
+    if (undoButton) undoButton.disabled = !session.canUndo();
+    if (redoButton) redoButton.disabled = !session.canRedo();
   };
   session.subscribe(render);
 
@@ -112,6 +116,9 @@ export function init(doc = document, timers = {}) {
       "Edited by hand. Inputs are untouched. Choosing a resolution or re-comparing rebuilds this text.";
   });
 
+  if (undoButton) undoButton.addEventListener("click", () => session.undo());
+  if (redoButton) redoButton.addEventListener("click", () => session.redo());
+
   const onPaneInput = () => {
     updateCounts();
     comparer.onEdit();
@@ -123,4 +130,8 @@ export function init(doc = document, timers = {}) {
   return { comparer, session, getOps: () => currentOps };
 }
 
-if (typeof document !== "undefined") init(document);
+// Auto-start only on the real page. Tests import this module with an empty DOM and call
+// init(document) themselves once the page markup is in place.
+if (typeof document !== "undefined" && document.getElementById("compare-btn")) {
+  init(document);
+}
