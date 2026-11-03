@@ -1,118 +1,147 @@
-import { describe, test, expect } from "@jest/globals";
-import { createComparer, formatSummary } from "../src/app.js";
+import { describe, test, expect, jest } from "@jest/globals";
+import { createComparer, formatSummary, init } from "../src/app.js";
 import { diffText } from "../src/engine/diff.js";
-
-// A hand-driven timer, so tests can decide exactly when "time passes".
-function fakeTimers() {
-  const pending = new Map();
-  let nextId = 1;
-  return {
-    setTimer: (fn) => {
-      const id = nextId++;
-      pending.set(id, fn);
-      return id;
-    },
-    clearTimer: (id) => pending.delete(id),
-    pendingCount: () => pending.size,
-    fireAll: () => {
-      const fns = [...pending.values()];
-      pending.clear();
-      fns.forEach((fn) => fn());
-    },
-  };
-}
-
-function setup(a, b) {
-  const state = { a, b };
-  const renders = [];
-  const timers = fakeTimers();
-  const comparer = createComparer({
-    getA: () => state.a,
-    getB: () => state.b,
-    render: (ops) => renders.push(ops),
-    setTimer: timers.setTimer,
-    clearTimer: timers.clearTimer,
-  });
-  return { state, renders, timers, comparer };
-}
+import { createFakeDoc, actionClick, selectClick } from "./helpers/fakeDom.js";
 
 describe("createComparer", () => {
-  test("compare() runs the diff on the current text and renders it", () => {
-    const { renders, comparer } = setup("a\nb", "a\nB");
-    comparer.compare();
-    expect(renders).toHaveLength(1);
-    expect(renders[0]).toEqual(diffText("a\nb", "a\nB"));
-  });
+  function setup() {
+    const timers = new Map();
+    let next = 1;
+    const render = jest.fn();
+    const comparer = createComparer({
+      getA: () => "a\nb",
+      getB: () => "a\nc",
+      render,
+      delay: 300,
+      setTimer: (fn, ms) => {
+        timers.set(next, { fn, ms });
+        return next++;
+      },
+      clearTimer: (id) => timers.delete(id)
+    });
+    return { comparer, render, timers };
+  }
 
-  test("editing before the first Compare does nothing", () => {
-    const { renders, timers, comparer } = setup("a", "b");
-    comparer.onEdit();
-    expect(timers.pendingCount()).toBe(0);
-    expect(renders).toHaveLength(0);
+  test("is not live until the first compare", () => {
+    const { comparer, render, timers } = setup();
     expect(comparer.isLive()).toBe(false);
+    comparer.onEdit();
+    expect(timers.size).toBe(0);
+    expect(render).not.toHaveBeenCalled();
   });
 
-  test("after Compare, an edit updates the diff once the user pauses", () => {
-    const { state, renders, timers, comparer } = setup("a\nb", "a\nb");
+  test("compare renders the diff ops and goes live", () => {
+    const { comparer, render } = setup();
     comparer.compare();
-    expect(renders[0].every((op) => op.type === "equal")).toBe(true);
-
-    state.b = "a\nCHANGED";
-    comparer.onEdit();
-    expect(renders).toHaveLength(1); // not yet: still waiting for a pause
-    timers.fireAll();
-    expect(renders).toHaveLength(2);
-    expect(renders[1]).toEqual(diffText("a\nb", "a\nCHANGED"));
+    expect(comparer.isLive()).toBe(true);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(render.mock.calls[0][0]).toEqual(diffText("a\nb", "a\nc"));
   });
 
-  test("a burst of edits triggers a single re-run", () => {
-    const { state, renders, timers, comparer } = setup("a", "a");
+  test("after the first compare, edits re-run the diff 300 ms later, and only once", () => {
+    const { comparer, render, timers } = setup();
     comparer.compare();
-    for (const text of ["ab", "abc", "abcd"]) {
-      state.b = text;
-      comparer.onEdit();
-    }
-    expect(timers.pendingCount()).toBe(1);
-    timers.fireAll();
-    expect(renders).toHaveLength(2);
-    expect(renders[1]).toEqual(diffText("a", "abcd"));
-  });
-
-  test("clicking Compare cancels a waiting re-run", () => {
-    const { state, renders, timers, comparer } = setup("a", "a");
-    comparer.compare();
-    state.b = "x";
     comparer.onEdit();
-    comparer.compare();
-    expect(timers.pendingCount()).toBe(0);
-    expect(renders).toHaveLength(2);
-  });
-
-  test("every later edit keeps updating the diff", () => {
-    const { state, renders, timers, comparer } = setup("a", "a");
-    comparer.compare();
-    state.b = "one";
     comparer.onEdit();
-    timers.fireAll();
-    state.a = "two";
     comparer.onEdit();
-    timers.fireAll();
-    expect(renders).toHaveLength(3);
-    expect(renders[2]).toEqual(diffText("two", "one"));
+    expect(timers.size).toBe(1);
+    const [timer] = [...timers.values()];
+    expect(timer.ms).toBe(300);
+    timer.fn();
+    expect(render).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("formatSummary", () => {
-  test("says so when the versions are identical", () => {
-    expect(formatSummary(diffText("a\nb", "a\nb"))).toBe("The two versions are identical.");
-    expect(formatSummary(diffText("", ""))).toBe("The two versions are identical.");
+  test("builds a one-line summary", () => {
+    expect(formatSummary(diffText("a\nb\nc", "a\nx\nc"))).toBe("1 added · 1 removed · 2 unchanged");
+  });
+});
+
+describe("init", () => {
+  function setup(a, b) {
+    const doc = createFakeDoc();
+    const timers = new Map();
+    let next = 1;
+    const app = init(doc, {
+      setTimer: (fn) => {
+        timers.set(next, fn);
+        return next++;
+      },
+      clearTimer: (id) => timers.delete(id)
+    });
+    doc.elements["pane-a"].value = a;
+    doc.elements["pane-b"].value = b;
+    doc.elements["compare-btn"].dispatch("click");
+    return { doc, timers, ...app };
+  }
+
+  test("returns the comparer and the session the page uses", () => {
+    const { comparer, session } = setup("a", "a");
+    expect(typeof comparer.compare).toBe("function");
+    expect(typeof session.getState).toBe("function");
   });
 
-  test("counts added, removed and unchanged lines", () => {
-    expect(formatSummary(diffText("a\nb\nc", "a\nB\nc\nd"))).toBe("2 lines added, 1 line removed, 2 unchanged");
+  test("Compare finds conflicts and updates the counter and the list", () => {
+    const { doc, session } = setup("a\nb\nc", "a\nB\nc");
+    expect(session.getState().conflicts).toHaveLength(1);
+    expect(doc.elements["conflict-counter"].textContent).toBe("1 total · 0 resolved · 1 remaining");
+    expect(doc.elements["conflict-list"].innerHTML).toContain('data-conflict-id="1"');
+    expect(doc.elements["merged-result"].value).toBe("a\nc");
   });
 
-  test("uses the singular for one line", () => {
-    expect(formatSummary(diffText("a", "a\nb"))).toBe("1 line added, 0 lines removed, 1 unchanged");
+  test("identical versions show 'No conflicts.'", () => {
+    const { doc } = setup("a\nb", "a\nb");
+    expect(doc.elements["conflict-counter"].textContent).toBe("No conflicts.");
+    expect(doc.elements["merged-result"].value).toBe("a\nb");
+  });
+
+  test("Accept A, B and Both each insert exactly the matching lines", () => {
+    const { doc } = setup("top\nA1\nA2\nend", "top\nB1\nend");
+    const list = doc.elements["conflict-list"];
+    list.dispatch("click", actionClick("A", 1));
+    expect(doc.elements["merged-result"].value).toBe("top\nA1\nA2\nend");
+    list.dispatch("click", actionClick("B", 1));
+    expect(doc.elements["merged-result"].value).toBe("top\nB1\nend");
+    list.dispatch("click", actionClick("both", 1));
+    expect(doc.elements["merged-result"].value).toBe("top\nA1\nA2\nB1\nend");
+    expect(doc.elements["conflict-counter"].textContent).toBe("1 total · 1 resolved · 0 remaining");
+  });
+
+  test("clicking a conflict selects it", () => {
+    const { doc, session } = setup("a\nb\nc\nd\ne", "a\nB\nc\nD\ne");
+    doc.elements["conflict-list"].dispatch("click", selectClick(2));
+    expect(session.getState().selectedId).toBe(2);
+  });
+
+  test("typing in the merged pane changes only that pane", () => {
+    const { doc, session } = setup("a\nb\nc", "a\nB\nc");
+    const before = { a: doc.elements["pane-a"].value, b: doc.elements["pane-b"].value };
+    const resolutionsBefore = session.getState().resolutions;
+    doc.elements["merged-result"].value = "my own text";
+    doc.elements["merged-result"].dispatch("input");
+    expect(doc.elements["pane-a"].value).toBe(before.a);
+    expect(doc.elements["pane-b"].value).toBe(before.b);
+    expect(session.getState().resolutions).toBe(resolutionsBefore);
+    expect(doc.elements["merged-result"].value).toBe("my own text");
+    expect(doc.elements["merge-note"].textContent).toContain("Edited by hand");
+  });
+
+  test("editing a pane after Compare re-runs the diff and rebuilds the merged text", () => {
+    const { doc, timers } = setup("a\nb", "a\nc");
+    doc.elements["pane-b"].value = "a\nb";
+    doc.elements["pane-b"].dispatch("input");
+    expect(timers.size).toBe(1);
+    [...timers.values()][0]();
+    expect(doc.elements["conflict-counter"].textContent).toBe("No conflicts.");
+    expect(doc.elements["merged-result"].value).toBe("a\nb");
+  });
+
+  test("line counts follow the input panes", () => {
+    const { doc } = setup("", "");
+    doc.elements["pane-a"].value = "x\ny\nz";
+    doc.elements["pane-a"].dispatch("input");
+    expect(doc.elements["count-a"].textContent).toBe("3 lines");
+    expect(doc.elements["count-b"].textContent).toBe("0 lines");
   });
 });

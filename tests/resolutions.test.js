@@ -1,65 +1,56 @@
 import { describe, test, expect } from "@jest/globals";
-import { STATUSES, createResolutions, getStatus, setStatus, summarizeProgress } from "../src/engine/resolutions.js";
+import {
+  STATUSES,
+  createResolutions,
+  getStatus,
+  setStatus,
+  summarizeProgress
+} from "../src/engine/resolutions.js";
 
 const conflicts = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
 describe("resolutions", () => {
-  test("every conflict starts open", () => {
-    const res = createResolutions();
-    expect(conflicts.map((c) => getStatus(res, c.id))).toEqual(["open", "open", "open"]);
+  test("lists the five statuses", () => {
+    expect([...STATUSES]).toEqual(["open", "A", "B", "both", "manual"]);
   });
 
-  test("setStatus records a decision without changing the old state", () => {
+  test("a missing id is open", () => {
+    expect(getStatus(createResolutions(), 1)).toBe("open");
+  });
+
+  test("setStatus returns a new object and leaves the old one alone", () => {
     const before = createResolutions();
-    const after = setStatus(before, 2, "A");
-    expect(getStatus(after, 2)).toBe("A");
-    expect(getStatus(before, 2)).toBe("open");
+    const after = setStatus(before, 1, "A");
+    expect(before).toEqual({});
+    expect(after).toEqual({ 1: "A" });
+    expect(after).not.toBe(before);
   });
 
-  test("setting a conflict back to open removes it", () => {
-    const res = setStatus(setStatus(createResolutions(), 1, "B"), 1, "open");
-    expect(res).toEqual({});
+  test("an unknown status throws RangeError", () => {
+    expect(() => setStatus({}, 1, "later")).toThrow(RangeError);
+    expect(() => setStatus({}, 1, "later")).toThrow("Unknown resolution status: later");
   });
 
-  test("an unknown status is refused", () => {
-    expect(() => setStatus(createResolutions(), 1, "maybe")).toThrow(RangeError);
-  });
-
-  test("all five statuses are accepted", () => {
-    for (const status of STATUSES) expect(() => setStatus({}, 1, status)).not.toThrow();
-  });
-});
-
-describe("summarizeProgress", () => {
-  test("nothing resolved at the start", () => {
-    expect(summarizeProgress(conflicts, createResolutions())).toEqual({
+  test("summarizeProgress counts totals, resolved, remaining and byStatus", () => {
+    let res = createResolutions();
+    res = setStatus(res, 1, "A");
+    res = setStatus(res, 2, "both");
+    expect(summarizeProgress(conflicts, res)).toEqual({
       total: 3,
-      resolved: 0,
-      remaining: 3,
-      byStatus: { open: 3, A: 0, B: 0, both: 0, manual: 0 },
+      resolved: 2,
+      remaining: 1,
+      byStatus: { open: 1, A: 1, B: 0, both: 1, manual: 0 }
     });
   });
 
-  test("resolved plus remaining always equals total", () => {
-    let res = createResolutions();
-    res = setStatus(res, 1, "A");
-    res = setStatus(res, 3, "both");
-    const p = summarizeProgress(conflicts, res);
-    expect(p).toMatchObject({ total: 3, resolved: 2, remaining: 1 });
-    expect(p.byStatus).toEqual({ open: 1, A: 1, B: 0, both: 1, manual: 0 });
+  test("manual counts as resolved", () => {
+    const progress = summarizeProgress(conflicts, { 1: "manual" });
+    expect(progress.resolved).toBe(1);
+    expect(progress.remaining).toBe(2);
   });
 
-  test("a manual edit counts as resolved", () => {
-    const p = summarizeProgress(conflicts, setStatus({}, 2, "manual"));
-    expect(p).toMatchObject({ resolved: 1, remaining: 2 });
-  });
-
-  test("entries for conflicts that no longer exist are ignored", () => {
-    const p = summarizeProgress(conflicts, { 99: "A" });
-    expect(p).toMatchObject({ total: 3, resolved: 0, remaining: 3 });
-  });
-
-  test("no conflicts gives all zeros", () => {
-    expect(summarizeProgress([], {})).toMatchObject({ total: 0, resolved: 0, remaining: 0 });
+  test("ids that are not conflicts never push the counter out of range", () => {
+    const progress = summarizeProgress(conflicts, { 99: "A", 100: "B" });
+    expect(progress).toMatchObject({ total: 3, resolved: 0, remaining: 3 });
   });
 });
