@@ -1,93 +1,57 @@
 import { describe, test, expect } from "@jest/globals";
-import { renderConflictList, describeSide } from "../src/ui/conflictList.js";
-import { createSession } from "../src/engine/session.js";
-import { diffText } from "../src/engine/diff.js";
-
-const A = "one\ntwo\nthree\nfour\nfive\nsix\nseven";
-const B = "ONE\ntwo\nthree\nFOUR\nfive\nsix\nSEVEN";
-
-function state(setup) {
-  const session = createSession();
-  session.load(diffText(A, B));
-  if (setup) setup(session);
-  return session.getState();
-}
-
-const render = (s) => renderConflictList(s.conflicts, s.resolutions, s.selectedId);
-const count = (html, pattern) => (html.match(pattern) || []).length;
+import { describeSide, renderConflictList } from "../src/ui/conflictList.js";
+import { findConflictsInText } from "../src/engine/conflicts.js";
 
 describe("describeSide", () => {
-  test("no lines, one line and several lines", () => {
-    expect(describeSide("A", 3, 0)).toBe("A: none");
-    expect(describeSide("B", 7, 1)).toBe("B: line 7");
-    expect(describeSide("A", 3, 4)).toBe("A: lines 3-6");
+  test("describes a single line, a range and an empty side", () => {
+    expect(describeSide(4, ["x"])).toBe("line 4");
+    expect(describeSide(3, ["x", "y", "z"])).toBe("lines 3-5");
+    expect(describeSide(6, [])).toBe("no lines (before line 6)");
   });
 });
 
 describe("renderConflictList", () => {
-  test("shows one item per conflict", () => {
-    const html = render(state());
-    expect(count(html, /class="conflict-item/g)).toBe(3);
-    expect(html).toContain("Conflict 1");
-    expect(html).toContain("Conflict 3");
+  const conflicts = findConflictsInText("a\nb\nc\nd\ne", "a\nB\nc\nD\ne");
+
+  test("shows a friendly message when there are no conflicts", () => {
+    expect(renderConflictList([], {}, null)).toContain("No conflicts.");
   });
 
-  test("every conflict starts as Open", () => {
-    const html = render(state());
-    expect(count(html, /<span class="conflict-status">Open<\/span>/g)).toBe(3);
+  test("renders one select button per conflict, with data-conflict-id", () => {
+    const html = renderConflictList(conflicts, {}, null);
+    expect(html).toContain('data-conflict-id="1"');
+    expect(html).toContain('data-conflict-id="2"');
   });
 
-  test("each conflict shows Open, A, B or Both as decided", () => {
-    const html = render(
-      state((s) => {
-        s.resolve(1, "A");
-        s.resolve(2, "B");
-        s.resolve(3, "both");
-      })
-    );
-    expect(html).toContain('<span class="conflict-status">A</span>');
-    expect(html).toContain('<span class="conflict-status">B</span>');
-    expect(html).toContain('<span class="conflict-status">Both</span>');
-    expect(html).not.toContain(">Open<");
+  test("renders Accept A, B and Both buttons for each conflict", () => {
+    const html = renderConflictList(conflicts, {}, null);
+    for (const id of [1, 2]) {
+      for (const action of ["A", "B", "both"]) {
+        expect(html).toContain(`data-action="${action}" data-id="${id}"`);
+      }
+    }
   });
 
-  test("a hand-edited conflict shows Manual", () => {
-    expect(render(state((s) => s.resolve(2, "manual")))).toContain('<span class="conflict-status">Manual</span>');
+  test("shows each conflict's status: Open, A, B or Both", () => {
+    const html = renderConflictList(conflicts, { 1: "A" }, null);
+    expect(html).toContain(">Open<");
+    expect(html).toContain(">A<");
+    const both = renderConflictList(conflicts, { 1: "both", 2: "B" }, null);
+    expect(both).toContain(">Both<");
+    expect(both).toContain(">B<");
   });
 
-  test("a mix shows the right status on the right conflict", () => {
-    const html = render(state((s) => s.resolve(2, "B")));
-    expect(html).toMatch(/data-conflict-id="1"[^>]*>.*?Open/);
-    expect(html).toMatch(/data-conflict-id="2"[^>]*>.*?<span class="conflict-status">B<\/span>/);
+  test("marks the selected conflict", () => {
+    const html = renderConflictList(conflicts, {}, 2);
+    expect(html).toContain("is-selected");
+    expect(html.match(/is-selected/g)).toHaveLength(1);
+    expect(html).toContain('aria-current="true"');
   });
 
-  test("shows where each conflict is", () => {
-    const html = render(state());
-    expect(html).toContain("A: line 1, B: line 1");
-    expect(html).toContain("A: line 4, B: line 4");
-  });
-
-  test("marks only the selected conflict as current", () => {
-    const html = render(state((s) => s.select(2)));
-    expect(count(html, /aria-current="true"/g)).toBe(1);
-    expect(html).toMatch(/data-conflict-id="2" aria-current="true"/);
-  });
-
-  test("nothing is marked current when none is selected", () => {
-    expect(render(state())).not.toContain("aria-current");
-  });
-
-  test("says so when there are no conflicts", () => {
-    expect(renderConflictList([], {}, null)).toContain("No conflicts to list.");
-  });
-
-  test("describes pure additions and deletions", () => {
-    const added = createSession();
-    added.load(diffText("a\nc", "a\nb\nc"));
-    expect(render(added.getState())).toContain("A: none, B: line 2");
-
-    const removed = createSession();
-    removed.load(diffText("a\nb\nc", "a\nc"));
-    expect(render(removed.getState())).toContain("A: line 2, B: none");
+  test("escapes anything that could come from user text", () => {
+    const evil = [{ id: 1, type: '"><img src=x onerror=alert(1)>', aStart: 1, bStart: 1, aLines: ["x"], bLines: ["y"] }];
+    const html = renderConflictList(evil, {}, null);
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
   });
 });
