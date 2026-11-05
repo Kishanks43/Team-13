@@ -59,6 +59,7 @@ textarea {
   font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .merged-editor { min-height: 220px; }
+.export-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
 .button {
   border: 1px solid var(--border);
@@ -86,6 +87,7 @@ textarea {
 .status-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0 10px; font-size: 13px; font-weight: 600; }
 .status-open .status-badge { color: var(--open); }
 .conflict-item:not(.status-open) .status-badge { color: var(--done); }
+.status-manual .status-badge { color: var(--accent); border-style: dashed; }
 .conflict-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .empty-state { margin: 0; color: var(--muted); }
 
