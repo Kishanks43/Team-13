@@ -11,7 +11,10 @@ export default [
         console: "readonly",
         document: "readonly",
         window: "readonly",
-        HTMLElement: "readonly"
+        HTMLElement: "readonly",
+        DOMParser: "readonly",
+        TextDecoder: "readonly",
+        URL: "readonly"
       }
     },
     rules: {
