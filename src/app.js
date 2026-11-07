@@ -1,8 +1,9 @@
 import { diffText, summarize } from "./engine/diff.js";
 import { createSession } from "./engine/session.js";
-import { buildMergedText } from "./engine/merge.js";
+import { buildMerged, detectManualEdits } from "./engine/manualEdit.js";
 import { renderConflictList } from "./ui/conflictList.js";
 import { formatProgress } from "./ui/progress.js";
+import { downloadText, copyText } from "./ui/exportMerged.js";
 
 // Runs the diff on demand, and again 300 ms after the user stops typing once
 // the first Compare has happened. Timers are injectable so tests need no clock.
@@ -47,7 +48,7 @@ export function formatSummary(ops) {
 
 const lineCount = (text) => (text === "" ? 0 : text.split(/\r\n|\n|\r/).length);
 
-export function init(doc = document, timers = {}) {
+export function init(doc = document, timers = {}, exportDeps = {}) {
   const paneA = doc.getElementById("pane-a");
   const paneB = doc.getElementById("pane-b");
   const compareButton = doc.getElementById("compare-btn");
@@ -60,8 +61,18 @@ export function init(doc = document, timers = {}) {
   const diffSummary = doc.getElementById("diff-summary"); // optional
   const undoButton = doc.getElementById("undo-btn"); // optional
   const redoButton = doc.getElementById("redo-btn"); // optional
+  const downloadButton = doc.getElementById("download-btn"); // optional
+  const copyButton = doc.getElementById("copy-btn"); // optional
+  const exportNote = doc.getElementById("export-note"); // optional
   const session = createSession();
   let currentOps = [];
+  // Lines the user typed for conflicts marked "manual", and where each conflict sits in the
+  // merged pane. Both are rebuilt on every compare.
+  let manualLines = {};
+  let built = { lines: [], segments: [] };
+  let shownConflicts = null;
+  let shownResolutions = null;
+  let marking = false;
 
   const updateCounts = () => {
     countA.textContent = `${lineCount(paneA.value)} lines`;
@@ -73,9 +84,17 @@ export function init(doc = document, timers = {}) {
   const render = (state) => {
     conflictCounter.textContent = formatProgress(state.progress);
     conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
-    // Only a session change rebuilds the merged text. Typing in the merged pane
-    // never reaches this function, and nothing here ever writes to pane-a or pane-b.
-    mergedResult.value = buildMergedText(currentOps, state.conflicts, state.resolutions);
+    // The merged text is rebuilt only when the conflicts or their resolutions change, so
+    // selecting a conflict never wipes a hand edit. Typing in the merged pane never reaches
+    // here, and nothing here ever writes to pane-a or pane-b.
+    const changed = state.conflicts !== shownConflicts || state.resolutions !== shownResolutions;
+    shownConflicts = state.conflicts;
+    shownResolutions = state.resolutions;
+    if (changed && !marking) {
+      built = buildMerged(currentOps, state.conflicts, state.resolutions, manualLines);
+      const text = built.lines.join("\n");
+      if (mergedResult.value !== text) mergedResult.value = text;
+    }
     if (undoButton) undoButton.disabled = !session.canUndo();
     if (redoButton) redoButton.disabled = !session.canRedo();
   };
@@ -87,6 +106,7 @@ export function init(doc = document, timers = {}) {
     getB: () => paneB.value,
     render: (ops) => {
       currentOps = ops;
+      manualLines = {};
       if (diffSummary) diffSummary.textContent = formatSummary(ops);
       session.load(ops);
       mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
@@ -108,13 +128,43 @@ export function init(doc = document, timers = {}) {
     if (select) session.select(Number(select.dataset.conflictId));
   });
 
-  // S2-05 decision: a hand edit changes only the merged pane. It does not touch
-  // pane-a, pane-b or the resolution state. The next resolution click or
-  // re-compare rebuilds the merged text, so the note says so.
+  // S2-05 decision: a hand edit changes only the merged pane. It never touches pane-a, pane-b
+  // or the text of any other conflict. S3-01: a conflict the edit lands in is marked "manual",
+  // so it shows a Manual badge and counts as resolved.
   mergedResult.addEventListener("input", () => {
-    mergeNote.textContent =
-      "Edited by hand. Inputs are untouched. Choosing a resolution or re-comparing rebuilds this text.";
+    const result = detectManualEdits(built.lines, mergedResult.value, built.segments);
+    built = { lines: result.newLines, segments: result.segments };
+    if (result.edits.length === 0) {
+      mergeNote.textContent = "Edited by hand. Inputs are untouched. Re-comparing rebuilds this text.";
+      return;
+    }
+    marking = true;
+    try {
+      for (const edit of result.edits) {
+        manualLines[edit.id] = edit.lines;
+        session.resolve(edit.id, "manual");
+      }
+    } finally {
+      marking = false;
+    }
+    const ids = result.edits.map((edit) => edit.id).join(", ");
+    mergeNote.textContent = `Edited by hand. Conflict ${ids} is now Manual. Inputs are untouched.`;
   });
+
+  // S3-08: the file and the clipboard get exactly what the Merged Result pane holds.
+  const say = (result) => {
+    if (exportNote) exportNote.textContent = result.message;
+  };
+  if (downloadButton) {
+    downloadButton.addEventListener("click", () => {
+      say(downloadText(mergedResult.value, { doc, ...exportDeps }));
+    });
+  }
+  if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+      say(await copyText(mergedResult.value, { doc, ...exportDeps }));
+    });
+  }
 
   if (undoButton) undoButton.addEventListener("click", () => session.undo());
   if (redoButton) redoButton.addEventListener("click", () => session.redo());

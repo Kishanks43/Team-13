@@ -49,6 +49,11 @@
       </div>
       <textarea id="merged-result" class="merged-editor" spellcheck="false" aria-label="Editable merged result" placeholder="Your merged code will appear here"></textarea>
       <p id="merge-note" class="muted" aria-live="polite">The merged result is independent of the two input panes.</p>
+      <div class="export-row">
+        <button id="download-btn" class="button" type="button">Download merged file</button>
+        <button id="copy-btn" class="button" type="button">Copy merged result</button>
+        <span id="export-note" class="muted" role="status" aria-live="polite"></span>
+      </div>
     </section>
     <footer> Sprint 2 · S2-04 Accept A/B/Both · S2-05 Editable Merged Result · S2-06 Input immutability tests </footer>
   </main>
