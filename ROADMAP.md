@@ -225,10 +225,10 @@ Goal: harden the tool, make it safe and accessible, produce the final file, and 
 
 ### Sprint 3 Testing Deliverables
 
-| Deliverable | Owner | Pts | Description | Done when |
-|---|---|---|---|---|
-| T-04 System Validation Report | C (Kishan) | 2 | Comprehensive system validation report validating the integrated application against all requirements in SRS_Team13. | System validation report completed in `docs/System_Validation_Report_Team13.docx` (or `.md`). |
-| T-05 Branch Coverage Report | C (Kishan) | 2 | Detailed branch coverage report using Jest coverage across all engine and UI modules, analyzing branches and coverage thresholds. | Branch coverage report completed in `docs/Branch_Coverage_Report_Team13.docx` (or `.md`). |
+| Deliverable | Issue | Owner | Pts | Description | Done when |
+|---|---|---|---|---|---|
+| T-04 System Validation Report | #70 | C (Kishan) | 2 | Comprehensive system validation report validating the integrated application against all requirements in SRS_Team13. | System validation report completed in `docs/System_Validation_Report_Team13.docx` (or `.md`). |
+| T-05 Branch Coverage Report | #71 | C (Kishan) | 2 | Detailed branch coverage report using Jest coverage across all engine and UI modules, analyzing branches and coverage thresholds. | Branch coverage report completed in `docs/Branch_Coverage_Report_Team13.docx` (or `.md`). |
 
 Notes per story:
 
@@ -313,5 +313,5 @@ Each list covers all three sprints, after the reassignment of S2-09 and S3-08 to
 - [x] Sprint 2: S2-10 Integration tests for resolve flow (#20, 3)
 - [x] Sprint 3: S3-07 Apply Merge guard (#27, 3)
 - [x] Sprint 3: S3-09 End-to-end test and traceability matrix (#29, 3)
-- [ ] Sprint 3 Testing: T-04 System Validation Report
-- [ ] Sprint 3 Testing: T-05 Branch Coverage Report
+- [ ] Sprint 3 Testing: T-04 System Validation Report (#70, 2)
+- [ ] Sprint 3 Testing: T-05 Branch Coverage Report (#71, 2)

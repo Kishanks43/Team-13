@@ -2,6 +2,7 @@
 
 ## T-04: System Validation Report
 - **ID:** T-04
+- **Issue:** #70
 - **Title:** T-04: System Validation Report
 - **Owner:** Kishan K (`Kishanks43`)
 - **Type:** Testing / Quality Assurance
@@ -43,6 +44,7 @@ The System Validation Report verifies that the end-to-end software system satisf
 
 ## T-05: Branch Coverage Report
 - **ID:** T-05
+- **Issue:** #71
 - **Title:** T-05: Branch Coverage Report
 - **Owner:** Kishan K (`Kishanks43`)
 - **Type:** Testing / Metrics
