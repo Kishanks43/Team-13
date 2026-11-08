@@ -12,7 +12,7 @@
   <main class="app-shell">
     <header class="page-header">
       <div>
-        <p class="eyebrow">TEAM 13 · SPRINT 2</p>
+        <p class="eyebrow">TEAM 13 · SPRINT 3</p>
         <h1>Code Merge Simulator</h1>
         <p class="subtitle">Review each conflict and build your merged result.</p>
       </div>
@@ -49,13 +49,17 @@
       </div>
       <textarea id="merged-result" class="merged-editor" spellcheck="false" aria-label="Editable merged result" placeholder="Your merged code will appear here"></textarea>
       <p id="merge-note" class="muted" aria-live="polite">The merged result is independent of the two input panes.</p>
+      <div class="apply-merge-row">
+        <button id="apply-merge-btn" class="button button-primary" type="button" disabled aria-disabled="true">Apply Merge</button>
+        <span id="apply-merge-note" class="muted" role="status" aria-live="polite">Compare versions to begin</span>
+      </div>
       <div class="export-row">
         <button id="download-btn" class="button" type="button">Download merged file</button>
         <button id="copy-btn" class="button" type="button">Copy merged result</button>
         <span id="export-note" class="muted" role="status" aria-live="polite"></span>
       </div>
     </section>
-    <footer> Sprint 2 · S2-04 Accept A/B/Both · S2-05 Editable Merged Result · S2-06 Input immutability tests </footer>
+    <footer> Sprint 3 · S3-07 Apply Merge guard · S3-08 Download/Copy merged file </footer>
   </main>
   <script type="module" src="src/app.js"></script>
 </body>

@@ -4,6 +4,7 @@ import { buildMerged, detectManualEdits } from "./engine/manualEdit.js";
 import { renderConflictList } from "./ui/conflictList.js";
 import { formatProgress } from "./ui/progress.js";
 import { downloadText, copyText } from "./ui/exportMerged.js";
+import { checkMergeGuard } from "./engine/mergeGuard.js";
 
 // Runs the diff on demand, and again 300 ms after the user stops typing once
 // the first Compare has happened. Timers are injectable so tests need no clock.
@@ -64,6 +65,8 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   const downloadButton = doc.getElementById("download-btn"); // optional
   const copyButton = doc.getElementById("copy-btn"); // optional
   const exportNote = doc.getElementById("export-note"); // optional
+  const applyMergeButton = doc.getElementById("apply-merge-btn"); // optional (S3-07)
+  const applyMergeNote = doc.getElementById("apply-merge-note"); // optional (S3-07)
   const session = createSession();
   let currentOps = [];
   // Lines the user typed for conflicts marked "manual", and where each conflict sits in the
@@ -77,6 +80,22 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   const updateCounts = () => {
     countA.textContent = `${lineCount(paneA.value)} lines`;
     countB.textContent = `${lineCount(paneB.value)} lines`;
+  };
+
+  // S3-07: The Apply Merge button is disabled while any conflict is open or markers remain,
+  // and explains why (for example, "2 conflicts left"). It enables as soon as the last one is resolved.
+  const updateApplyMergeGuard = () => {
+    if (!applyMergeButton) return;
+    const guard = checkMergeGuard({
+      hasCompared: comparer.isLive(),
+      progress: session.getState().progress,
+      mergedText: mergedResult ? mergedResult.value : ""
+    });
+    applyMergeButton.disabled = !guard.allowed;
+    applyMergeButton.setAttribute("aria-disabled", String(!guard.allowed));
+    if (applyMergeNote) {
+      applyMergeNote.textContent = guard.reason;
+    }
   };
 
   // Runs on every session change (load, resolve, select). The counter updates here,
@@ -97,6 +116,7 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     }
     if (undoButton) undoButton.disabled = !session.canUndo();
     if (redoButton) redoButton.disabled = !session.canRedo();
+    updateApplyMergeGuard();
   };
   session.subscribe(render);
 
@@ -110,6 +130,7 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
       if (diffSummary) diffSummary.textContent = formatSummary(ops);
       session.load(ops);
       mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
+      updateApplyMergeGuard();
     }
   });
 
@@ -136,6 +157,7 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     built = { lines: result.newLines, segments: result.segments };
     if (result.edits.length === 0) {
       mergeNote.textContent = "Edited by hand. Inputs are untouched. Re-comparing rebuilds this text.";
+      updateApplyMergeGuard();
       return;
     }
     marking = true;
@@ -149,7 +171,26 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     }
     const ids = result.edits.map((edit) => edit.id).join(", ");
     mergeNote.textContent = `Edited by hand. Conflict ${ids} is now Manual. Inputs are untouched.`;
+    updateApplyMergeGuard();
   });
+
+  // S3-07: Apply Merge click action.
+  if (applyMergeButton) {
+    applyMergeButton.addEventListener("click", () => {
+      const guard = checkMergeGuard({
+        hasCompared: comparer.isLive(),
+        progress: session.getState().progress,
+        mergedText: mergedResult.value
+      });
+      if (!guard.allowed) return;
+      if (applyMergeNote) {
+        applyMergeNote.textContent = "Merge applied successfully.";
+      }
+      if (exportNote) {
+        exportNote.textContent = "Merge applied. Ready to download or copy.";
+      }
+    });
+  }
 
   // S3-08: the file and the clipboard get exactly what the Merged Result pane holds.
   const say = (result) => {
@@ -176,8 +217,9 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   paneA.addEventListener("input", onPaneInput);
   paneB.addEventListener("input", onPaneInput);
   updateCounts();
+  updateApplyMergeGuard();
 
-  return { comparer, session, getOps: () => currentOps };
+  return { comparer, session, getOps: () => currentOps, updateApplyMergeGuard };
 }
 
 // Auto-start only on the real page. Tests import this module with an empty DOM and call

@@ -39,3 +39,20 @@ export function buildMergedLines(ops, conflicts, resolutions) {
 export function buildMergedText(ops, conflicts, resolutions) {
   return buildMergedLines(ops, conflicts, resolutions).join("\n");
 }
+
+const splitForScan = (text) => (text ? String(text).split(/\r\n|\n|\r/) : []);
+
+const START_LINE = /^<{7}(?: |$)/;
+const END_LINE = /^>{7}(?: |$)/;
+
+// How many conflict blocks are still marked in the text (one per "<<<<<<<" line).
+export function countConflictMarkers(text) {
+  return splitForScan(text).filter((line) => START_LINE.test(line)).length;
+}
+
+// True if any start or end marker line is left in the text. S3-07 uses this so a
+// half-deleted block still counts as unresolved. A lone "=======" line is ignored,
+// because it is a normal line in many files (for example under a Markdown heading).
+export function hasConflictMarkers(text) {
+  return splitForScan(text).some((line) => START_LINE.test(line) || END_LINE.test(line));
+}
