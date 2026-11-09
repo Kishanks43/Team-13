@@ -55,3 +55,9 @@ Files:
 ## Tooling
 
 `package.json` and `eslint.config.js` hold the project scripts and tooling. CI runs `npm ci`, `npm test` and `npm run lint` on Node 22.
+## S3-10: Demo and GitHub Pages
+
+The 5–7 minute presentation script, three sample walkthroughs, screenshot preparation helper,
+and GitHub Pages deployment workflow are documented in [`docs/DEMO-SCRIPT-S3-10.md`](docs/DEMO-SCRIPT-S3-10.md).
+The expected Pages URL is `https://kishanks43.github.io/Team-13/` once the repository owner enables
+**Settings → Pages → Source: GitHub Actions** and the deployment workflow succeeds.
