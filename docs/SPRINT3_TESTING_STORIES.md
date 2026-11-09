@@ -35,10 +35,10 @@ The System Validation Report verifies that the end-to-end software system satisf
    - Known limitations or deviations notes for the demo.
 
 ### Done When
-- [ ] Comprehensive validation test cases mapped to SRS requirements.
-- [ ] Execution results recorded with pass/fail status and evidence.
-- [ ] System validation report document saved to `docs/System_Validation_Report_Team13.docx` (and markdown summary).
-- [ ] Document reviewed and linked in repository documentation.
+- [x] Comprehensive validation test cases mapped to SRS requirements.
+- [x] Execution results recorded with pass/fail status and evidence.
+- [x] System validation report document saved to `docs/System_Validation_Report_Team13.docx` (and markdown summary).
+- [x] Document reviewed and linked in repository documentation.
 
 ---
 
