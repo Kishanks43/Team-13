@@ -1,6 +1,12 @@
 import { diffText, summarize } from "./engine/diff.js";
 import { createSession } from "./engine/session.js";
-import { buildMerged, detectManualEdits } from "./engine/manualEdit.js";
+import {
+  buildMergedWithMarkers,
+  decorateMergedModelWithGitConflictMarkers,
+  detectManualEdits,
+  normalizeDisplayedMerge,
+  stripGitConflictMarkerLines
+} from "./engine/manualEdit.js";
 import { renderConflictList } from "./ui/conflictList.js";
 import { formatProgress } from "./ui/progress.js";
 import { downloadText, copyText } from "./ui/exportMerged.js";
@@ -110,7 +116,7 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     shownConflicts = state.conflicts;
     shownResolutions = state.resolutions;
     if (changed && !marking) {
-      built = buildMerged(currentOps, state.conflicts, state.resolutions, manualLines);
+      built = buildMergedWithMarkers(currentOps, state.conflicts, state.resolutions, manualLines);
       const text = built.lines.join("\n");
       if (mergedResult.value !== text) mergedResult.value = text;
     }
@@ -154,23 +160,53 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   // so it shows a Manual badge and counts as resolved.
   mergedResult.addEventListener("input", () => {
     const result = detectManualEdits(built.lines, mergedResult.value, built.segments);
-    built = { lines: result.newLines, segments: result.segments };
-    if (result.edits.length === 0) {
+
+    // Replacing the whole merged pane is an unscoped pane edit, not a resolution
+    // of one arbitrarily selected conflict. Keep the user's text and leave statuses
+    // unchanged; the Apply Merge guard will still prevent an unresolved merge.
+    if (result.wholePaneReplacement && result.edits.length === 0) {
+      built = { lines: result.newLines, segments: result.segments };
       mergeNote.textContent = "Edited by hand. Inputs are untouched. Re-comparing rebuilds this text.";
       updateApplyMergeGuard();
       return;
     }
-    marking = true;
-    try {
-      for (const edit of result.edits) {
-        manualLines[edit.id] = edit.lines;
-        session.resolve(edit.id, "manual");
+
+    if (result.edits.length > 0) {
+      marking = true;
+      try {
+        for (const edit of result.edits) {
+          // Marker rows are display scaffolding, not part of the saved manual text.
+          manualLines[edit.id] = stripGitConflictMarkerLines(edit.lines);
+          session.resolve(edit.id, "manual");
+        }
+      } finally {
+        marking = false;
       }
-    } finally {
-      marking = false;
     }
-    const ids = result.edits.map((edit) => edit.id).join(", ");
-    mergeNote.textContent = `Edited by hand. Conflict ${ids} is now Manual. Inputs are untouched.`;
+
+    // Remove the display-only open blocks, retain the contents of conflicts that
+    // became Manual, then put markers back around conflicts that remain Open.
+    const state = session.getState();
+    const normalized = normalizeDisplayedMerge(
+      result.newLines,
+      result.segments,
+      state.conflicts,
+      state.resolutions
+    );
+    built = decorateMergedModelWithGitConflictMarkers(
+      normalized.lines,
+      normalized.segments,
+      state.conflicts,
+      state.resolutions
+    );
+    mergedResult.value = built.lines.join("\n");
+
+    if (result.edits.length === 0) {
+      mergeNote.textContent = "Edited by hand. Inputs are untouched. Re-comparing rebuilds this text.";
+    } else {
+      const ids = result.edits.map((edit) => edit.id).join(", ");
+      mergeNote.textContent = `Edited by hand. Conflict ${ids} is now Manual. Inputs are untouched.`;
+    }
     updateApplyMergeGuard();
   });
 

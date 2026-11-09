@@ -87,7 +87,7 @@ describe("init", () => {
     expect(session.getState().conflicts).toHaveLength(1);
     expect(doc.elements["conflict-counter"].textContent).toBe("1 total · 0 resolved · 1 remaining");
     expect(doc.elements["conflict-list"].innerHTML).toContain('data-conflict-id="1"');
-    expect(doc.elements["merged-result"].value).toBe("a\nc");
+    expect(doc.elements["merged-result"].value).toBe("a\n<<<<<<< A\nb\n=======\nB\n>>>>>>> B\nc");
   });
 
   test("identical versions show 'No conflicts.'", () => {
