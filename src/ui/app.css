@@ -2,7 +2,7 @@
   --bg: #f6f8fa;
   --panel: #ffffff;
   --text: #1f2328;
-  --muted: #656d76;
+  --muted: #4b5563;
   --border: #d0d7de;
   --accent: #0969da;
   --accent-text: #ffffff;
@@ -16,7 +16,7 @@
     --bg: #0d1117;
     --panel: #161b22;
     --text: #e6edf3;
-    --muted: #848d97;
+    --muted: #b1bac4;
     --border: #30363d;
     --accent: #2f81f7;
     --accent-text: #ffffff;
@@ -114,3 +114,27 @@ textarea {
 .diff-table .num, .diff-table .marker { color: var(--muted); text-align: right; width: 3ch; }
 
 footer { color: var(--muted); font-size: 13px; }
+
+/* S3-05: keyboard access, visible focus and a high-contrast skip link. */
+.skip-link {
+  position: absolute; z-index: 1000; top: 8px; left: 8px;
+  padding: 8px 12px; color: #fff; background: #1f2328;
+  border: 2px solid #fff; border-radius: 6px; transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+:where(button, textarea, a[href], [tabindex]):focus-visible {
+  outline: 3px solid #005fcc; outline-offset: 3px;
+}
+@media (prefers-color-scheme: dark) {
+  :where(button, textarea, a[href], [tabindex]):focus-visible { outline-color: #8ab4ff; }
+}
+button, textarea, a[href] { scroll-margin: 12px; }
+.button { min-height: 40px; }
+.button:disabled, .button[disabled] {
+  opacity: 1; color: #4b5563; background: #e5e7eb; border-color: #6b7280;
+}
+@media (prefers-color-scheme: dark) {
+  .button:disabled, .button[disabled] {
+    color: #e6edf3; background: #30363d; border-color: #8b949e;
+  }
+}

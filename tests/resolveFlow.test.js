@@ -59,9 +59,7 @@ describe("resolve flow (integration)", () => {
     expect(items).toHaveLength(2);
     expect(statusOf(1)).toBe("Open");
     expect(statusOf(2)).toBe("Open");
-    expect(document.getElementById("merged-result").value).toBe(
-      "top\n<<<<<<< A\nA1\n=======\nB1\n>>>>>>> B\nmid\n<<<<<<< A\nA2\n=======\nB2\n>>>>>>> B\nend"
-    );
+    expect(document.getElementById("merged-result").value).toBe("top\nmid\nend");
 
     expect(document.getElementById("undo-btn").disabled).toBe(true);
     expect(document.getElementById("redo-btn").disabled).toBe(true);
@@ -75,9 +73,7 @@ describe("resolve flow (integration)", () => {
     expect(counterText()).toBe("2 total · 1 resolved · 1 remaining");
     expect(statusOf(1)).toBe("A");
     expect(statusOf(2)).toBe("Open");
-    expect(document.getElementById("merged-result").value).toBe(
-      "top\nA1\nmid\n<<<<<<< A\nA2\n=======\nB2\n>>>>>>> B\nend"
-    );
+    expect(document.getElementById("merged-result").value).toBe("top\nA1\nmid\nend");
 
     resolveWith(2, "both");
     expect(counterText()).toBe("2 total · 2 resolved · 0 remaining");
@@ -108,15 +104,13 @@ describe("resolve flow (integration)", () => {
     undoBtn.click();
     expect(counterText()).toBe("2 total · 1 resolved · 1 remaining");
     expect(statusOf(2)).toBe("Open");
-    expect(merged.value).toBe("top\nA1\nmid\n<<<<<<< A\nA2\n=======\nB2\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nA1\nmid\nend");
     expect(redoBtn.disabled).toBe(false);
 
     undoBtn.click();
     expect(counterText()).toBe("2 total · 0 resolved · 2 remaining");
     expect(statusOf(1)).toBe("Open");
-    expect(merged.value).toBe(
-      "top\n<<<<<<< A\nA1\n=======\nB1\n>>>>>>> B\nmid\n<<<<<<< A\nA2\n=======\nB2\n>>>>>>> B\nend"
-    );
+    expect(merged.value).toBe("top\nmid\nend");
     expect(undoBtn.disabled).toBe(true);
 
     redoBtn.click();

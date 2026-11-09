@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="src/ui/app.css">
 </head>
 <body>
-  <main class="app-shell">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <main id="main-content" class="app-shell" tabindex="-1">
     <header class="page-header">
       <div>
         <p class="eyebrow">TEAM 13 · SPRINT 3</p>
@@ -38,7 +39,7 @@
           <button id="redo-btn" class="button button-small" type="button" disabled>Redo</button>
         </div>
       </div>
-      <div id="conflict-list" class="conflict-list" aria-live="polite">
+      <div id="conflict-list" class="conflict-list" aria-label="Conflict resolution controls" aria-live="polite">
         <p class="empty-state">Compare two versions to find conflicts.</p>
       </div>
     </section>
