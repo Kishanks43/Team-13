@@ -313,5 +313,5 @@ Each list covers all three sprints, after the reassignment of S2-09 and S3-08 to
 - [x] Sprint 2: S2-10 Integration tests for resolve flow (#20, 3)
 - [x] Sprint 3: S3-07 Apply Merge guard (#27, 3)
 - [x] Sprint 3: S3-09 End-to-end test and traceability matrix (#29, 3)
-- [ ] Sprint 3 Testing: T-04 System Validation Report (#70, 2)
+- [x] Sprint 3 Testing: T-04 System Validation Report (#70, 2)
 - [ ] Sprint 3 Testing: T-05 Branch Coverage Report (#71, 2)
