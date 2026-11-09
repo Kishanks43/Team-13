@@ -10,6 +10,10 @@ const ops = diffText(textA, textB);
 const conflicts = findConflicts(ops);
 
 describe("S3-04 Git-style conflict markers", () => {
+  test("exports the marker builder used by the app and test suite", () => {
+    expect(buildMergedWithMarkers).toEqual(expect.any(Function));
+  });
+
   test("shows the standard markers for every open conflict in the merged pane model", () => {
     const merged = buildMergedWithMarkers(ops, conflicts, {});
     expect(merged.lines.join("\n")).toBe(
