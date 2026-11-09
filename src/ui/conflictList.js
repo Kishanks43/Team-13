@@ -30,7 +30,8 @@ export function renderConflictList(conflicts, resolutions = {}, selectedId = nul
         .map(
           ([action, text]) =>
             `<button type="button" class="button button-small${status === action ? " is-active" : ""}" ` +
-            `data-action="${action}" data-id="${conflict.id}" aria-pressed="${status === action}">${text}</button>`
+            `data-action="${action}" data-id="${conflict.id}" aria-label="${text} for conflict ${conflict.id}" ` +
+            `aria-pressed="${status === action}">${text}</button>`
         )
         .join("");
       return (
