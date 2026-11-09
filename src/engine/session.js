@@ -1,20 +1,16 @@
 import { findConflicts } from "./conflicts.js";
-import {
-  createResolutions,
-  getStatus,
-  isStatus,
-  setStatus,
-  summarizeProgress
-} from "./resolutions.js";
-import { createHistory, DEFAULT_HISTORY_LIMIT } from "./history.js";
+import { createResolutions, setStatus, getStatus, summarizeProgress } from "./resolutions.js";
 
-// The one place that holds conflict and resolution state.
-export function createSession({ historyLimit = DEFAULT_HISTORY_LIMIT } = {}) {
+export const HISTORY_LIMIT = 100; // the roadmap asks for at least 50 undo steps
+
+// The one place that holds conflict state, resolutions, selection and undo history.
+export function createSession() {
   let conflicts = [];
   let resolutions = createResolutions();
   let selectedId = null;
+  let past = [];
+  let future = [];
   const listeners = new Set();
-  const history = createHistory(resolutions, { limit: historyLimit });
 
   const getState = () => ({
     conflicts,
@@ -25,52 +21,60 @@ export function createSession({ historyLimit = DEFAULT_HISTORY_LIMIT } = {}) {
 
   const notify = () => {
     const state = getState();
-    for (const listener of [...listeners]) listener(state);
+    for (const fn of [...listeners]) fn(state);
   };
 
-  const assertConflictId = (id) => {
-    if (!conflicts.some((conflict) => conflict.id === id)) {
-      throw new RangeError(`Unknown conflict id: ${id}`);
-    }
+  const requireConflict = (id) => {
+    if (!conflicts.some((c) => c.id === id)) throw new RangeError(`Unknown conflict id: ${id}`);
   };
 
   return {
+    // Starts over from a new diff: every conflict reopens, selection and history clear.
     load(ops) {
       conflicts = findConflicts(ops);
       resolutions = createResolutions();
       selectedId = null;
-      history.clear(resolutions);
+      past = [];
+      future = [];
       notify();
     },
     resolve(id, status) {
-      assertConflictId(id);
-      if (!isStatus(status)) {
-        throw new RangeError(`Unknown resolution status: ${status}`);
-      }
+      requireConflict(id);
+      const next = setStatus(resolutions, id, status); // throws on an unknown status
       if (getStatus(resolutions, id) === status) return;
-      resolutions = setStatus(resolutions, id, status);
-      history.record(resolutions);
-      notify();
-    },
-    select(id) {
-      if (id !== null) assertConflictId(id);
+      past.push(resolutions);
+      if (past.length > HISTORY_LIMIT) past.shift();
+      future = [];
+      resolutions = next;
       selectedId = id;
       notify();
     },
+    select(id) {
+      if (id !== null) requireConflict(id);
+      selectedId = id;
+      notify();
+    },
+    // Sets the resolutions directly (used by undo and redo, handy for tests).
+    restore(snapshot) {
+      resolutions = snapshot;
+      notify();
+    },
     undo() {
-      if (!history.undo()) return false;
-      resolutions = history.current();
+      if (past.length === 0) return false;
+      future.push(resolutions);
+      resolutions = past.pop();
       notify();
       return true;
     },
     redo() {
-      if (!history.redo()) return false;
-      resolutions = history.current();
+      if (future.length === 0) return false;
+      past.push(resolutions);
+      resolutions = future.pop();
       notify();
       return true;
     },
-    canUndo: () => history.canUndo(),
-    canRedo: () => history.canRedo(),
+    canUndo: () => past.length > 0,
+    canRedo: () => future.length > 0,
     subscribe(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

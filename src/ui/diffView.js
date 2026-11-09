@@ -1,5 +1,4 @@
-// Rendering helpers for the side-by-side diff view.
-
+// Every piece of user text goes through escapeHtml before it reaches innerHTML.
 export function escapeHtml(text) {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -9,74 +8,61 @@ export function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
-const MARKERS = { equal: " ", changed: "~", removed: "-", added: "+" };
-
-// Turns diff ops into side-by-side rows:
-// { kind: "equal" | "changed" | "removed" | "added", marker, left, right }
-// where left and right are { num, text } or null when that side has no line.
-// Inside a run of changes, removed and added lines are paired into "changed"
-// rows first; any extras stay as "removed" or "added" rows.
+// Pairs removed and added lines inside one run into "change" rows.
 export function buildRows(ops) {
   const rows = [];
   let i = 0;
   while (i < ops.length) {
     const op = ops[i];
     if (op.type === "equal") {
-      rows.push({
-        kind: "equal",
-        marker: MARKERS.equal,
-        left: { num: op.aLine, text: op.text },
-        right: { num: op.bLine, text: op.text }
-      });
+      rows.push({ type: "equal", aLine: op.aLine, aText: op.text, bLine: op.bLine, bText: op.text });
       i++;
       continue;
     }
-    const removes = [];
-    const adds = [];
+    const removed = [];
+    const added = [];
     while (i < ops.length && ops[i].type !== "equal") {
-      (ops[i].type === "remove" ? removes : adds).push(ops[i]);
+      (ops[i].type === "remove" ? removed : added).push(ops[i]);
       i++;
     }
-    const length = Math.max(removes.length, adds.length);
-    for (let j = 0; j < length; j++) {
-      const r = removes[j];
-      const a = adds[j];
-      const kind = r && a ? "changed" : r ? "removed" : "added";
+    const count = Math.max(removed.length, added.length);
+    for (let r = 0; r < count; r++) {
+      const a = removed[r];
+      const b = added[r];
+      let type = "change";
+      if (!b) type = "remove";
+      else if (!a) type = "add";
       rows.push({
-        kind,
-        marker: MARKERS[kind],
-        left: r ? { num: r.aLine, text: r.text } : null,
-        right: a ? { num: a.bLine, text: a.text } : null
+        type,
+        aLine: a ? a.aLine : null,
+        aText: a ? a.text : "",
+        bLine: b ? b.bLine : null,
+        bText: b ? b.text : ""
       });
     }
   }
   return rows;
 }
 
-function renderSide(side, cls) {
-  const num = side ? side.num : "";
-  const text = side ? escapeHtml(side.text) : "";
-  return `<td class="diff-num">${num}</td><td class="diff-code ${cls}">${text}</td>`;
-}
+const MARKERS = { equal: " ", add: "+", remove: "-", change: "~" };
 
-// Returns an HTML string. All pasted text goes through escapeHtml.
+// Returns an HTML string.
 export function renderSideBySide(rows) {
   const body = rows
     .map(
       (row) =>
-        `<tr class="diff-row diff-${row.kind}">` +
-        renderSide(row.left, "diff-left") +
-        `<td class="diff-marker">${row.marker}</td>` +
-        renderSide(row.right, "diff-right") +
+        `<tr class="row-${row.type}">` +
+        `<td class="marker">${MARKERS[row.type]}</td>` +
+        `<td class="ln">${row.aLine === null ? "" : row.aLine}</td>` +
+        `<td class="code">${escapeHtml(row.aText)}</td>` +
+        `<td class="ln">${row.bLine === null ? "" : row.bLine}</td>` +
+        `<td class="code">${escapeHtml(row.bText)}</td>` +
         `</tr>`
     )
     .join("");
   return (
     `<table class="diff-table">` +
-    `<colgroup><col class="col-num"><col class="col-code"><col class="col-marker">` +
-    `<col class="col-num"><col class="col-code"></colgroup>` +
-    `<thead><tr><th colspan="2" scope="col">Version A</th><th scope="col"><span class="visually-hidden">Change</span></th>` +
-    `<th colspan="2" scope="col">Version B</th></tr></thead>` +
+    `<thead><tr><th></th><th>A line</th><th>Version A</th><th>B line</th><th>Version B</th></tr></thead>` +
     `<tbody>${body}</tbody></table>`
   );
 }

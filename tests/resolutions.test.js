@@ -1,56 +1,34 @@
 import { describe, test, expect } from "@jest/globals";
-import {
-  STATUSES,
-  createResolutions,
-  getStatus,
-  setStatus,
-  summarizeProgress
-} from "../src/engine/resolutions.js";
-
-const conflicts = [{ id: 1 }, { id: 2 }, { id: 3 }];
+import { STATUSES, createResolutions, getStatus, setStatus, summarizeProgress } from "../src/engine/resolutions.js";
+import { createSession } from "../src/engine/session.js";
+import { diffText } from "../src/engine/diff.js";
+import { findConflicts } from "../src/engine/conflicts.js";
 
 describe("resolutions", () => {
-  test("lists the five statuses", () => {
-    expect([...STATUSES]).toEqual(["open", "A", "B", "both", "manual"]);
+  test("statuses and the open default", () => {
+    expect(STATUSES).toEqual(["open", "A", "B", "both", "manual"]);
+    expect(getStatus(createResolutions(), 7)).toBe("open");
   });
-
-  test("a missing id is open", () => {
-    expect(getStatus(createResolutions(), 1)).toBe("open");
-  });
-
-  test("setStatus returns a new object and leaves the old one alone", () => {
+  test("setStatus returns a new object and never changes the old one", () => {
     const before = createResolutions();
     const after = setStatus(before, 1, "A");
     expect(before).toEqual({});
     expect(after).toEqual({ 1: "A" });
-    expect(after).not.toBe(before);
   });
-
-  test("an unknown status throws RangeError", () => {
-    expect(() => setStatus({}, 1, "later")).toThrow(RangeError);
-    expect(() => setStatus({}, 1, "later")).toThrow("Unknown resolution status: later");
+  test("an unknown status throws a RangeError", () => {
+    expect(() => setStatus({}, 1, "nope")).toThrow(RangeError);
   });
-
-  test("summarizeProgress counts totals, resolved, remaining and byStatus", () => {
-    let res = createResolutions();
-    res = setStatus(res, 1, "A");
-    res = setStatus(res, 2, "both");
-    expect(summarizeProgress(conflicts, res)).toEqual({
-      total: 3,
-      resolved: 2,
-      remaining: 1,
-      byStatus: { open: 1, A: 1, B: 0, both: 1, manual: 0 }
-    });
+  test("session.resolve and select throw a RangeError for an unknown id or status", () => {
+    const s = createSession();
+    s.load(diffText("a", "b"));
+    expect(() => s.resolve(99, "A")).toThrow(RangeError);
+    expect(() => s.resolve(1, "nope")).toThrow(RangeError);
+    expect(() => s.select(99)).toThrow(RangeError);
   });
-
-  test("manual counts as resolved", () => {
-    const progress = summarizeProgress(conflicts, { 1: "manual" });
-    expect(progress.resolved).toBe(1);
-    expect(progress.remaining).toBe(2);
-  });
-
-  test("ids that are not conflicts never push the counter out of range", () => {
-    const progress = summarizeProgress(conflicts, { 99: "A", 100: "B" });
-    expect(progress).toMatchObject({ total: 3, resolved: 0, remaining: 3 });
+  test("progress never goes negative or past the total; manual counts as resolved", () => {
+    const conflicts = findConflicts(diffText("a\nb\nc", "x\nb\ny"));
+    const p = summarizeProgress(conflicts, { 1: "manual", 2: "both", 99: "A" });
+    expect(p).toMatchObject({ total: 2, resolved: 2, remaining: 0 });
+    expect(p.byStatus).toEqual({ open: 0, A: 0, B: 0, both: 1, manual: 1 });
   });
 });

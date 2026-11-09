@@ -1,8 +1,9 @@
-/** Small helpers for the two input panes. */
-import { splitLines } from "../engine/diff.js";
+export function formatLineCount(count) {
+  return `${count} ${count === 1 ? "line" : "lines"}`;
+}
 
-/** "0 lines", "1 line", "12 lines". Uses the same line rules as the diff, so the numbers always agree. */
-export function describeLines(text) {
-  const n = splitLines(text).length;
-  return `${n} ${n === 1 ? "line" : "lines"}`;
+// The text shown under a pane after a file load attempt.
+export function formatLoadNote(result) {
+  if (result.ok) return `Loaded ${result.name}.`;
+  return `Could not load ${result.name || "file"}: ${result.error}`;
 }

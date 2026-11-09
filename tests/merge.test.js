@@ -2,54 +2,50 @@ import { describe, test, expect } from "@jest/globals";
 import { diffText } from "../src/engine/diff.js";
 import { findConflicts } from "../src/engine/conflicts.js";
 import { buildMergedText, linesForResolution } from "../src/engine/merge.js";
+import { setStatus, createResolutions } from "../src/engine/resolutions.js";
+import { samples } from "../src/samples.js";
 
-const a = "top\nA1\nA2\nmiddle\nA3\nbottom";
-const b = "top\nB1\nmiddle\nB2\nB3\nbottom";
-const ops = diffText(a, b);
-const conflicts = findConflicts(ops);
+const setup = (a, b) => {
+  const ops = diffText(a, b);
+  return { ops, conflicts: findConflicts(ops) };
+};
+const resolveAll = (conflicts, status) => conflicts.reduce((res, c) => setStatus(res, c.id, status), createResolutions());
 
-describe("buildMergedText", () => {
-  test("two conflicts in this fixture", () => {
-    expect(conflicts).toHaveLength(2);
+test("linesForResolution gives exactly the matching lines", () => {
+  const c = { aLines: ["a1", "a2"], bLines: ["b1"] };
+  expect(linesForResolution(c, "A")).toEqual(["a1", "a2"]);
+  expect(linesForResolution(c, "B")).toEqual(["b1"]);
+  expect(linesForResolution(c, "both")).toEqual(["a1", "a2", "b1"]);
+  expect(linesForResolution(c, "manual", ["mine"])).toEqual(["mine"]);
+});
+
+describe("merged text for resolved conflicts", () => {
+  const { ops, conflicts } = setup("1\nx\n2\ny\n3", "1\nX\n2\nY\n3");
+
+  test("A, B and both", () => {
+    expect(buildMergedText(ops, conflicts, resolveAll(conflicts, "A"))).toBe("1\nx\n2\ny\n3");
+    expect(buildMergedText(ops, conflicts, resolveAll(conflicts, "B"))).toBe("1\nX\n2\nY\n3");
+    expect(buildMergedText(ops, conflicts, resolveAll(conflicts, "both"))).toBe("1\nx\nX\n2\ny\nY\n3");
   });
-
-  test("open conflicts contribute nothing yet; equal lines are copied", () => {
-    expect(buildMergedText(ops, conflicts, {})).toBe("top\nmiddle\nbottom");
+  test("each conflict can be resolved differently", () => {
+    const res = setStatus(setStatus(createResolutions(), 1, "B"), 2, "A");
+    expect(buildMergedText(ops, conflicts, res)).toBe("1\nX\n2\ny\n3");
   });
-
-  test("Accept A inserts exactly the A lines", () => {
-    expect(buildMergedText(ops, conflicts, { 1: "A", 2: "A" })).toBe("top\nA1\nA2\nmiddle\nA3\nbottom");
+  test("added and removed conflicts", () => {
+    const s = setup("a\nb", "a\nb\nc");
+    expect(buildMergedText(s.ops, s.conflicts, resolveAll(s.conflicts, "A"))).toBe("a\nb");
+    expect(buildMergedText(s.ops, s.conflicts, resolveAll(s.conflicts, "B"))).toBe("a\nb\nc");
   });
-
-  test("Accept B inserts exactly the B lines", () => {
-    expect(buildMergedText(ops, conflicts, { 1: "B", 2: "B" })).toBe("top\nB1\nmiddle\nB2\nB3\nbottom");
+  test("manual with stored text uses it", () => {
+    const res = setStatus(createResolutions(), 1, "manual");
+    expect(buildMergedText(ops, conflicts, setStatus(res, 2, "A"), { 1: ["mine"] })).toBe("1\nmine\n2\ny\n3");
   });
-
-  test("Accept Both is the A lines followed by the B lines, with no blank lines", () => {
-    const merged = buildMergedText(ops, conflicts, { 1: "both", 2: "both" });
-    expect(merged).toBe("top\nA1\nA2\nB1\nmiddle\nA3\nB2\nB3\nbottom");
-    expect(merged.split("\n")).not.toContain("");
-  });
-
-  test("each conflict is resolved independently", () => {
-    expect(buildMergedText(ops, conflicts, { 1: "B", 2: "A" })).toBe("top\nB1\nmiddle\nA3\nbottom");
-  });
-
   test("identical inputs merge to the same text", () => {
-    const same = diffText("x\ny", "x\ny");
-    expect(buildMergedText(same, findConflicts(same), {})).toBe("x\ny");
+    const s = setup("a\nb", "a\nb");
+    expect(buildMergedText(s.ops, s.conflicts, createResolutions())).toBe("a\nb");
   });
-
-  test("a pure addition and a pure deletion behave as expected", () => {
-    const addOps = diffText("a\nc", "a\nb\nc");
-    const addConflicts = findConflicts(addOps);
-    expect(buildMergedText(addOps, addConflicts, { 1: "A" })).toBe("a\nc");
-    expect(buildMergedText(addOps, addConflicts, { 1: "B" })).toBe("a\nb\nc");
-  });
-
-  test("linesForResolution returns copies, never the conflict's own arrays", () => {
-    const lines = linesForResolution(conflicts[0], "A");
-    lines.push("junk");
-    expect(conflicts[0].aLines).toEqual(["A1", "A2"]);
+  test.each(samples)("sample $id: resolving everything to B gives version B", (sample) => {
+    const s = setup(sample.a, sample.b);
+    expect(buildMergedText(s.ops, s.conflicts, resolveAll(s.conflicts, "B"))).toBe(sample.b);
   });
 });

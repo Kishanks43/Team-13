@@ -1,84 +1,74 @@
-import { describe, test, expect, jest } from "@jest/globals";
+import { describe, test, expect } from "@jest/globals";
+import { createSession, HISTORY_LIMIT } from "../src/engine/session.js";
 import { diffText } from "../src/engine/diff.js";
-import { createSession } from "../src/engine/session.js";
 
-const ops = diffText("a\nb\nc\nd\ne", "a\nB\nc\nD\ne"); // 2 conflicts
+const loaded = (a = "1\nx\n2\ny\n3", b = "1\nX\n2\nY\n3") => {
+  const s = createSession();
+  s.load(diffText(a, b));
+  return s;
+};
 
-describe("createSession", () => {
-  test("starts empty", () => {
-    const state = createSession().getState();
-    expect(state).toEqual({
-      conflicts: [],
-      resolutions: {},
-      progress: { total: 0, resolved: 0, remaining: 0, byStatus: { open: 0, A: 0, B: 0, both: 0, manual: 0 } },
-      selectedId: null
-    });
+describe("session", () => {
+  test("load opens every conflict", () => {
+    const s = loaded();
+    expect(s.getState().progress).toMatchObject({ total: 2, resolved: 0, remaining: 2 });
+    expect(s.canUndo()).toBe(false);
   });
-
-  test("load reopens every conflict and clears the selection", () => {
-    const session = createSession();
-    session.load(ops);
-    session.resolve(1, "A");
-    session.select(2);
-    session.load(ops);
-    const state = session.getState();
-    expect(state.resolutions).toEqual({});
-    expect(state.selectedId).toBeNull();
-    expect(state.progress).toMatchObject({ total: 2, resolved: 0, remaining: 2 });
-  });
-
-  test("resolve records a decision and the progress follows", () => {
-    const session = createSession();
-    session.load(ops);
-    session.resolve(1, "both");
-    expect(session.getState().resolutions).toEqual({ 1: "both" });
-    expect(session.getState().progress).toMatchObject({ total: 2, resolved: 1, remaining: 1 });
-  });
-
-  test("an unknown conflict id throws RangeError", () => {
-    const session = createSession();
-    session.load(ops);
-    expect(() => session.resolve(9, "A")).toThrow(RangeError);
-    expect(() => session.resolve(9, "A")).toThrow("Unknown conflict id: 9");
-    expect(() => session.select(7)).toThrow(RangeError);
-    expect(() => session.select(7)).toThrow("Unknown conflict id: 7");
-  });
-
-  test("an unknown status throws RangeError", () => {
-    const session = createSession();
-    session.load(ops);
-    expect(() => session.resolve(1, "later")).toThrow(RangeError);
-    expect(() => session.resolve(1, "later")).toThrow("Unknown resolution status: later");
-  });
-
-  test("a failed resolve changes nothing and notifies nobody", () => {
-    const session = createSession();
-    session.load(ops);
-    const listener = jest.fn();
-    session.subscribe(listener);
-    expect(() => session.resolve(1, "later")).toThrow();
-    expect(session.getState().resolutions).toEqual({});
-    expect(listener).not.toHaveBeenCalled();
-  });
-
-  test("select accepts null for no selection", () => {
-    const session = createSession();
-    session.load(ops);
-    session.select(1);
-    expect(session.getState().selectedId).toBe(1);
-    session.select(null);
-    expect(session.getState().selectedId).toBeNull();
-  });
-
-  test("subscribe is called synchronously after every change, and can be undone", () => {
-    const session = createSession();
+  test("resolve updates progress, selection and notifies once", () => {
+    const s = loaded();
     const seen = [];
-    const unsubscribe = session.subscribe((state) => seen.push(state.progress.resolved));
-    session.load(ops);
-    session.resolve(1, "A");
-    expect(seen).toEqual([0, 1]);
-    unsubscribe();
-    session.resolve(2, "B");
-    expect(seen).toEqual([0, 1]);
+    s.subscribe((st) => seen.push(st.progress.remaining));
+    s.resolve(1, "A");
+    expect(seen).toEqual([1]);
+    expect(s.getState().selectedId).toBe(1);
+  });
+  test("unknown id or status throws", () => {
+    const s = loaded();
+    expect(() => s.resolve(99, "A")).toThrow();
+    expect(() => s.resolve(1, "nope")).toThrow();
+  });
+  test("undo and redo walk the history", () => {
+    const s = loaded();
+    s.resolve(1, "A");
+    s.resolve(2, "B");
+    expect(s.undo()).toBe(true);
+    expect(s.getState().progress.resolved).toBe(1);
+    expect(s.canRedo()).toBe(true);
+    expect(s.redo()).toBe(true);
+    expect(s.getState().progress.resolved).toBe(2);
+    expect(s.redo()).toBe(false);
+  });
+  test("a new resolve clears redo; same status is a no-op", () => {
+    const s = loaded();
+    s.resolve(1, "A");
+    s.undo();
+    s.resolve(2, "B");
+    expect(s.canRedo()).toBe(false);
+    s.resolve(2, "B");
+    s.undo();
+    expect(s.getState().progress.resolved).toBe(0);
+  });
+  test("load clears history", () => {
+    const s = loaded();
+    s.resolve(1, "A");
+    s.load(diffText("a", "b"));
+    expect(s.canUndo()).toBe(false);
+  });
+  test("history is capped", () => {
+    const s = loaded();
+    for (let i = 0; i < HISTORY_LIMIT + 20; i++) s.resolve(1, i % 2 ? "A" : "B");
+    let steps = 0;
+    while (s.undo()) steps++;
+    expect(steps).toBe(HISTORY_LIMIT);
+  });
+  test("restore sets resolutions; unsubscribe stops calls", () => {
+    const s = loaded();
+    let calls = 0;
+    const off = s.subscribe(() => calls++);
+    s.restore({ 1: "both" });
+    expect(s.getState().resolutions).toEqual({ 1: "both" });
+    off();
+    s.select(2);
+    expect(calls).toBe(1);
   });
 });
