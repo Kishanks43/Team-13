@@ -227,6 +227,7 @@ Goal: harden the tool, make it safe and accessible, produce the final file, and 
 
 | Deliverable | Issue | Owner | Pts | Description | Done when |
 |---|---|---|---|---|---|
+| T-03 Update Test Case Document | #88 | B (Madan) | 2 | Update and consolidate Sprint 3 functional, non-functional, regression and cross-browser test cases with execution/evidence fields. | Updated test case document saved in `docs/Test_Case_Document_Team13.docx` and `.md`, and linked from project documentation. |
 | T-04 System Validation Report | #70 | C (Kishan) | 2 | Comprehensive system validation report validating the integrated application against all requirements in SRS_Team13. | System validation report completed in `docs/System_Validation_Report_Team13.docx` (or `.md`). |
 | T-05 Branch Coverage Report | #71 | C (Kishan) | 2 | Detailed branch coverage report using Jest coverage across all engine and UI modules, analyzing branches and coverage thresholds. | Branch coverage report completed in `docs/Branch_Coverage_Report_Team13.docx` (or `.md`). |
 
@@ -301,6 +302,7 @@ Each list covers all three sprints, after the reassignment of S2-09 and S3-08 to
 - [ ] Sprint 3: S3-05 Keyboard access and contrast (#25, 3)
 - [ ] Sprint 3: S3-06 Cross-browser support (#26, 2)
 - [ ] Sprint 3: S3-10 Demo script, screenshots and live demo (#30, 3)
+- [ ] Sprint 3 Testing: T-03 Update Test Case Document (#88, 2)
 
 ### Person C: Kishan K (`Kishanks43`), UI flow, navigation, undo and integration, 29 points
 

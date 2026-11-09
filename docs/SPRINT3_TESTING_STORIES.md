@@ -67,7 +67,7 @@ The Branch Coverage Report analyzes the test coverage of the entire application 
    - Recommendations for any supplemental test cases.
 
 ### Done When
-- [x] Jest coverage report generated with full branch metrics (`npm test -- --coverage`).
-- [x] Comprehensive branch coverage report document saved to `docs/Branch_Coverage_Report_Team13.docx` (and markdown summary).
-- [x] Branch coverage percentages and uncovered branches documented per module.
-- [x] All critical engine branches verified with >90% branch coverage.
+- [ ] Jest coverage report generated with full branch metrics (`npm test -- --coverage`).
+- [ ] Comprehensive branch coverage report document saved to `docs/Branch_Coverage_Report_Team13.docx` (and markdown summary).
+- [ ] Branch coverage percentages and uncovered branches documented per module.
+- [ ] All critical engine branches verified with >90% branch coverage.

@@ -61,3 +61,8 @@ The 5–7 minute presentation script, three sample walkthroughs, screenshot prep
 and GitHub Pages deployment workflow are documented in [`docs/DEMO-SCRIPT-S3-10.md`](docs/DEMO-SCRIPT-S3-10.md).
 The expected Pages URL is `https://kishanks43.github.io/Team-13/` once the repository owner enables
 **Settings → Pages → Source: GitHub Actions** and the deployment workflow succeeds.
+
+
+## Testing documentation
+
+- **Test Case Document (Sprint 3 update):** [`docs/Test_Case_Document_Team13.md`](docs/Test_Case_Document_Team13.md) and [`docs/Test_Case_Document_Team13.docx`](docs/Test_Case_Document_Team13.docx) — T-03 (#88).
