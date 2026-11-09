@@ -144,4 +144,53 @@ describe("init", () => {
     expect(doc.elements["count-a"].textContent).toBe("3 lines");
     expect(doc.elements["count-b"].textContent).toBe("0 lines");
   });
+
+  describe("S3-07 Apply Merge guard", () => {
+    test("Apply Merge button is disabled before compare with explanation", () => {
+      const doc = createFakeDoc();
+      init(doc, { setTimer: () => 1, clearTimer: () => {} });
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(true);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Compare versions to begin");
+    });
+
+    test("Apply Merge button remains disabled while conflicts are open and shows remaining count", () => {
+      const { doc } = setup("a\n1\nb\n2\nc", "a\nX\nb\nY\nc");
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(true);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("2 conflicts left");
+    });
+
+    test("Apply Merge button enables once all conflicts are resolved", () => {
+      const { doc } = setup("a\n1\nb\n2\nc", "a\nX\nb\nY\nc");
+      const list = doc.elements["conflict-list"];
+      list.dispatch("click", actionClick("A", 1));
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(true);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("1 conflict left");
+
+      list.dispatch("click", actionClick("B", 2));
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(false);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Ready to apply merge");
+    });
+
+    test("clicking enabled Apply Merge reports success", () => {
+      const { doc } = setup("a\n1\nb", "a\nX\nb");
+      doc.elements["conflict-list"].dispatch("click", actionClick("A", 1));
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(false);
+
+      doc.elements["apply-merge-btn"].dispatch("click");
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Merge applied successfully.");
+    });
+
+    test("disables if conflict markers remain in the merged result pane", () => {
+      const { doc } = setup("a\n1\nb", "a\nX\nb");
+      doc.elements["conflict-list"].dispatch("click", actionClick("A", 1));
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(false);
+
+      // User types or pastes conflict marker block into merged editor
+      doc.elements["merged-result"].value = "<<<<<<< A\n1\n=======\nX\n>>>>>>> B";
+      doc.elements["merged-result"].dispatch("input");
+
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(true);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Resolve conflict markers in merged result");
+    });
+  });
 });

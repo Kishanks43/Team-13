@@ -2,15 +2,23 @@
 
 function makeElement() {
   const listeners = {};
+  const attributes = {};
   return {
     value: "",
     textContent: "",
     innerHTML: "",
+    disabled: false,
     addEventListener(type, fn) {
       (listeners[type] ??= []).push(fn);
     },
     dispatch(type, event = {}) {
       for (const fn of listeners[type] ?? []) fn(event);
+    },
+    setAttribute(name, value) {
+      attributes[name] = String(value);
+    },
+    getAttribute(name) {
+      return attributes[name] ?? null;
     }
   };
 }
@@ -24,7 +32,9 @@ const IDS = [
   "conflict-list",
   "count-a",
   "count-b",
-  "merge-note"
+  "merge-note",
+  "apply-merge-btn",
+  "apply-merge-note"
 ];
 
 export function createFakeDoc() {
