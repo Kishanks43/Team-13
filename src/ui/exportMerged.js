@@ -43,14 +43,19 @@ export function downloadText(
 
 // Copies the text to the clipboard. Uses the modern clipboard when the page may use it and
 // falls back to a hidden textarea otherwise. Resolves to { ok, message } and never throws.
-export async function copyText(text, { nav = globalThis.navigator, doc = globalThis.document } = {}) {
+export async function copyText(text, { nav, doc = globalThis.document } = {}) {
   if (text === "") return { ok: false, message: EMPTY_COPY_MESSAGE };
   try {
-    if (nav && nav.clipboard && typeof nav.clipboard.writeText === "function") {
-      await nav.clipboard.writeText(text);
+    // Prefer an explicitly injected navigator in tests/embedders; otherwise feature-detect
+    // the browser's native navigator.clipboard API (not available in every browser context).
+    const clipboard = nav !== undefined
+      ? nav?.clipboard
+      : (typeof globalThis.navigator !== "undefined" ? globalThis.navigator.clipboard : undefined);
+    if (clipboard && typeof clipboard.writeText === "function") {
+      await clipboard.writeText(text);
       return { ok: true, message: "Copied the merged result." };
     }
-  } catch {
+  } catch (error) {
     // fall through to the older way
   }
   try {
@@ -64,7 +69,7 @@ export async function copyText(text, { nav = globalThis.navigator, doc = globalT
     const copied = doc.execCommand("copy");
     area.remove();
     if (copied) return { ok: true, message: "Copied the merged result." };
-  } catch {
+  } catch (error) {
     // report below
   }
   return { ok: false, message: "Copying was blocked. Select the text and copy it by hand." };

@@ -1,8 +1,8 @@
 import { getStatus } from "./resolutions.js";
 
-// Lines a conflict contributes to the merged text for a given status.
-// open and manual contribute nothing here: open is undecided, and manual text
-// lives in the editable merged pane.
+// Canonical engine output includes accepted resolutions only. Git marker rows are
+// added by the UI presentation layer, never by this pure merge builder. Manual
+// content is supplied separately by the editable merged pane.
 export function linesForResolution(conflict, status) {
   switch (status) {
     case "A":
@@ -11,6 +11,8 @@ export function linesForResolution(conflict, status) {
       return [...conflict.bLines];
     case "both":
       return [...conflict.aLines, ...conflict.bLines];
+    case "open":
+    case "manual":
     default:
       return [];
   }
