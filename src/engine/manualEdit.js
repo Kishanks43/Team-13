@@ -1,5 +1,6 @@
 import { getStatus } from "./resolutions.js";
 import { linesForResolution } from "./merge.js";
+import { diffLines } from "./diff.js";
 
 // Hand edits in the Merged Result pane.
 //
@@ -40,6 +41,70 @@ export function buildMerged(ops, conflicts, resolutions, manualLines = {}) {
   return { lines, segments };
 }
 
+// Marker lines are presentation scaffolding, not user-authored merged content.
+export function stripGitConflictMarkerLines(lines) {
+  return lines.filter((line) => line !== "<<<<<<< A" && line !== "=======" && line !== ">>>>>>> B");
+}
+
+// Decorate a canonical merge model without changing its line or segment data.
+export function decorateMergedModelWithGitConflictMarkers(lines, segments, conflicts, resolutions) {
+  const conflictById = new Map(conflicts.map((conflict) => [conflict.id, conflict]));
+  const at = new Map();
+  const displayedSegments = [];
+  let markerOffset = 0;
+
+  for (const segment of segments) {
+    const conflict = conflictById.get(segment.id);
+    const open = getStatus(resolutions, segment.id) === "open";
+    const start = segment.start + markerOffset;
+    const markerBlock = open
+      ? ["<<<<<<< A", ...conflict.aLines, "=======", ...conflict.bLines, ">>>>>>> B"]
+      : [];
+    if (open) at.set(segment.start, [...(at.get(segment.start) || []), ...markerBlock]);
+    displayedSegments.push({
+      id: segment.id,
+      start,
+      end: segment.end + markerOffset + markerBlock.length,
+      ...(open ? { markers: true } : {})
+    });
+    markerOffset += markerBlock.length;
+  }
+
+  const displayed = [];
+  for (let index = 0; index <= lines.length; index++) {
+    if (at.has(index)) displayed.push(...at.get(index));
+    if (index < lines.length) displayed.push(lines[index]);
+  }
+  return { lines: displayed, segments: displayedSegments };
+}
+
+export function buildMergedWithMarkers(ops, conflicts, resolutions, manualLines = {}) {
+  const base = buildMerged(ops, conflicts, resolutions, manualLines);
+  return decorateMergedModelWithGitConflictMarkers(base.lines, base.segments, conflicts, resolutions);
+}
+
+// Convert displayed lines back into the canonical merge model. Open conflict blocks
+// are display-only and are removed entirely; a conflict just marked Manual keeps its
+// edited contents while only the three marker-control lines are removed.
+export function normalizeDisplayedMerge(lines, segments, _conflicts, resolutions) {
+  const canonicalLines = [];
+  const canonicalSegments = [];
+  let cursor = 0;
+
+  for (const segment of segments) {
+    canonicalLines.push(...lines.slice(cursor, segment.start));
+    const start = canonicalLines.length;
+    const isOpenMarkerBlock = segment.markers && getStatus(resolutions, segment.id) === "open";
+    if (!isOpenMarkerBlock) {
+      canonicalLines.push(...stripGitConflictMarkerLines(lines.slice(segment.start, segment.end)));
+    }
+    canonicalSegments.push({ id: segment.id, start, end: canonicalLines.length });
+    cursor = segment.end;
+  }
+  canonicalLines.push(...lines.slice(cursor));
+  return { lines: canonicalLines, segments: canonicalSegments };
+}
+
 // oldLines/segments describe the pane before the edit; newText is the pane text now.
 // Returns { newLines, segments, edits } where edits is [{ id, lines }]: the conflicts to mark
 // manual and the lines each one now holds.
@@ -48,63 +113,112 @@ export function buildMerged(ops, conflicts, resolutions, manualLines = {}) {
 // gives that conflict the new lines. An edit that reaches across several conflicts or into
 // unchanged lines marks the conflicts it overlaps as manual but keeps the lines they had, so
 // the text can always be rebuilt without repeating anything.
-export function detectManualEdits(oldLines, newText, segments) {
+export function detectManualEdits(oldLines, newText, segments, { markerInsertionIsManual = false } = {}) {
   const newLines = splitMerged(newText);
   if (oldLines.join("\n") === newText) return { newLines, segments, edits: [] };
 
-  let p = 0;
-  while (p < oldLines.length && p < newLines.length && oldLines[p] === newLines[p]) p++;
-  let s = 0;
-  while (
-    s < oldLines.length - p &&
-    s < newLines.length - p &&
-    oldLines[oldLines.length - 1 - s] === newLines[newLines.length - 1 - s]
-  ) {
-    s++;
+  // Work with each changed run independently. A common-prefix/common-suffix scan
+  // collapses two distant edits (for example, one in a conflict and one in an
+  // unchanged footer) into one large edit and can incorrectly mark intervening
+  // conflicts as Manual.
+  const ops = diffLines(oldLines, newLines);
+  const regions = [];
+  let oldAt = 0;
+  let newAt = 0;
+  let index = 0;
+  while (index < ops.length) {
+    if (ops[index].type === "equal") {
+      oldAt++;
+      newAt++;
+      index++;
+      continue;
+    }
+    const oldStart = oldAt;
+    const newStart = newAt;
+    while (index < ops.length && ops[index].type !== "equal") {
+      if (ops[index].type === "remove") oldAt++;
+      else newAt++;
+      index++;
+    }
+    regions.push({ oldStart, oldEnd: oldAt, newStart, newEnd: newAt, delta: (newAt - newStart) - (oldAt - oldStart) });
   }
-  const oe = oldLines.length - s; // old lines [p, oe) were replaced by new lines [p, ne)
-  const ne = newLines.length - s;
-  const delta = ne - oe;
-  const insertion = p === oe;
 
-  const contained = segments.find((seg) => {
-    if (seg.start === seg.end) return insertion && p === seg.start;
-    if (insertion && p === seg.start) return false; // a line added just above the conflict
-    return seg.start <= p && oe <= seg.end;
-  });
+  const wholePaneReplacement = oldLines.length > 0 && regions.length === 1 &&
+    regions[0].oldStart === 0 && regions[0].oldEnd === oldLines.length;
+  if (wholePaneReplacement) {
+    // Clearing the pane removes the contents of every conflict segment that
+    // previously held lines. Mark each one Manual with an empty replacement;
+    // already-empty segments are not affected by the clear operation.
+    const edits = segments
+      .filter((segment) => segment.end > segment.start)
+      .map((segment) => ({ id: segment.id, lines: [] }));
+    const emptySegments = segments.map((segment) => ({
+      id: segment.id,
+      start: 0,
+      end: 0,
+      ...(segment.markers ? { markers: true } : {})
+    }));
+    return { newLines, segments: emptySegments, edits, wholePaneReplacement: true };
+  }
+  const containedBySegment = new Map(segments.map((segment) => [segment.id, []]));
+  const modeBySegment = new Map();
+  for (const region of regions) {
+    const insertion = region.oldStart === region.oldEnd;
+    const hits = segments.filter((segment) => {
+      if (insertion) {
+        if (segment.start === segment.end) return region.oldStart === segment.start;
+        if (region.oldStart === segment.start) return markerInsertionIsManual && segment.markers;
+        return region.oldStart > segment.start && region.oldStart <= segment.end;
+      }
+      return segment.start < region.oldEnd && segment.end > region.oldStart;
+    });
+    if (hits.length === 0) continue;
+
+    const contained = hits.length === 1 && (
+      insertion
+        ? (region.oldStart > hits[0].start && region.oldStart <= hits[0].end) ||
+          (hits[0].start === hits[0].end && region.oldStart === hits[0].start) ||
+          (markerInsertionIsManual && hits[0].markers && region.oldStart === hits[0].start)
+        : region.oldStart >= hits[0].start && region.oldEnd <= hits[0].end
+    );
+
+    if (contained) {
+      const segment = hits[0];
+      containedBySegment.get(segment.id).push(region);
+      if (!modeBySegment.has(segment.id)) modeBySegment.set(segment.id, "replace");
+    } else {
+      for (const segment of hits) modeBySegment.set(segment.id, "preserve");
+    }
+  }
+
+  const mapped = [];
+  let last = 0;
+  for (const segment of segments) {
+    const own = containedBySegment.get(segment.id);
+    const ownSet = new Set(own);
+    const beforeDelta = regions
+      .filter((region) => !ownSet.has(region) && region.oldEnd <= segment.start)
+      .reduce((sum, region) => sum + region.delta, 0);
+    const insideDelta = own.reduce((sum, region) => sum + region.delta, 0);
+    let start = segment.start + beforeDelta;
+    let end = segment.end + beforeDelta + insideDelta;
+    start = Math.max(0, Math.min(newLines.length, Math.max(start, last)));
+    end = Math.max(start, Math.min(newLines.length, end));
+    mapped.push({ id: segment.id, start, end, ...(segment.markers ? { markers: true } : {}) });
+    last = end;
+  }
 
   const edits = [];
-  if (contained) {
-    edits.push({ id: contained.id, lines: newLines.slice(contained.start, contained.end + delta) });
-  } else if (!insertion) {
-    for (const seg of segments) {
-      if (seg.end > seg.start && seg.start < oe && seg.end > p) {
-        edits.push({ id: seg.id, lines: oldLines.slice(seg.start, seg.end) });
-      }
-    }
+  for (const segment of segments) {
+    const mode = modeBySegment.get(segment.id);
+    if (!mode) continue;
+    const nextSegment = mapped.find((candidate) => candidate.id === segment.id);
+    const lines = mode === "replace"
+      ? newLines.slice(nextSegment.start, nextSegment.end)
+      : oldLines.slice(segment.start, segment.end);
+    edits.push({ id: segment.id, lines });
   }
 
-  // Move every segment to its place in the new text. Segments stay in order and never overlap,
-  // even when an edit swallowed the lines between two of them.
-  let last = 0;
-  const next = segments.map((seg) => {
-    let start;
-    let end;
-    if (seg === contained) {
-      start = seg.start;
-      end = seg.end + delta;
-    } else if (insertion) {
-      start = seg.start >= p ? seg.start + delta : seg.start;
-      end = seg.end > p ? seg.end + delta : seg.end;
-    } else {
-      start = seg.start <= p ? seg.start : seg.start >= oe ? seg.start + delta : p;
-      end = seg.end <= p ? seg.end : seg.end >= oe ? seg.end + delta : ne;
-    }
-    start = Math.max(start, last);
-    end = Math.max(end, start);
-    last = end;
-    return { id: seg.id, start, end };
-  });
-
-  return { newLines, segments: next, edits };
+  return { newLines, segments: mapped, edits, wholePaneReplacement };
 }
+
