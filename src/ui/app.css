@@ -2,10 +2,9 @@
   --bg: #f6f8fa;
   --panel: #ffffff;
   --text: #1f2328;
-  --muted: #59636e;
-  --border: #818b96;
+  --muted: #656d76;
+  --border: #d0d7de;
   --accent: #0969da;
-  --accent-solid: #0969da;
   --accent-text: #ffffff;
   --select: #ddf4ff;
   --open: #cf222e;
@@ -18,9 +17,8 @@
     --panel: #161b22;
     --text: #e6edf3;
     --muted: #848d97;
-    --border: #6e7681;
-    --accent: #58a6ff;
-    --accent-solid: #1f6feb;
+    --border: #30363d;
+    --accent: #2f81f7;
     --accent-text: #ffffff;
     --select: #0c2d6b;
     --open: #f85149;
@@ -36,21 +34,6 @@ body {
   color: var(--text);
   line-height: 1.5;
 }
-
-.skip-link {
-  position: absolute;
-  z-index: 10;
-  top: 8px;
-  left: 8px;
-  padding: 8px 12px;
-  transform: translateY(-160%);
-  border: 2px solid var(--accent);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  font-weight: 700;
-}
-.skip-link:focus { transform: translateY(0); }
 
 .app-shell {
   max-width: 1200px;
@@ -104,27 +87,11 @@ textarea {
   font: inherit;
   cursor: pointer;
 }
-.button-primary { background: var(--accent-solid); color: var(--accent-text); border-color: var(--accent-solid); font-weight: 600; }
+.button-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .button-small { padding: 4px 10px; font-size: 14px; }
 .button.is-active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
 .button:disabled, .button[disabled] { opacity: 0.55; cursor: not-allowed; }
-:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
-}
-
-.skip-link:focus-visible { outline-offset: 3px; }
-
-button, textarea, a { -webkit-tap-highlight-color: transparent; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+.button:focus-visible, textarea:focus-visible, .conflict-select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .conflict-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .conflict-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: grid; gap: 8px; }

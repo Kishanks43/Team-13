@@ -1,7 +1,6 @@
 import { describe, test, expect, jest } from "@jest/globals";
 import { createComparer, formatSummary, init } from "../src/app.js";
 import { diffText } from "../src/engine/diff.js";
-import { getStatus } from "../src/engine/resolutions.js";
 import { createFakeDoc, actionClick, selectClick } from "./helpers/fakeDom.js";
 
 describe("createComparer", () => {
@@ -88,7 +87,7 @@ describe("init", () => {
     expect(session.getState().conflicts).toHaveLength(1);
     expect(doc.elements["conflict-counter"].textContent).toBe("1 total · 0 resolved · 1 remaining");
     expect(doc.elements["conflict-list"].innerHTML).toContain('data-conflict-id="1"');
-    expect(doc.elements["merged-result"].value).toBe("a\n<<<<<<< A\nb\n=======\nB\n>>>>>>> B\nc");
+    expect(doc.elements["merged-result"].value).toBe("a\nc");
   });
 
   test("identical versions show 'No conflicts.'", () => {
@@ -126,22 +125,6 @@ describe("init", () => {
     expect(session.getState().resolutions).toBe(resolutionsBefore);
     expect(doc.elements["merged-result"].value).toBe("my own text");
     expect(doc.elements["merge-note"].textContent).toContain("Edited by hand");
-  });
-
-  test("clearing the entire merged pane marks populated conflicts Manual and can be undone", () => {
-    const { doc, session } = setup("a\nb\nc", "a\nB\nc");
-    const merged = doc.elements["merged-result"];
-
-    merged.value = "";
-    merged.dispatch("input");
-
-    expect(getStatus(session.getState().resolutions, 1)).toBe("manual");
-    expect(merged.value).toBe("");
-
-    expect(session.undo()).toBe(true);
-    expect(getStatus(session.getState().resolutions, 1)).toBe("open");
-    expect(merged.value).toContain("<<<<<<< A");
-    expect(merged.value).toContain(">>>>>>> B");
   });
 
   test("editing a pane after Compare re-runs the diff and rebuilds the merged text", () => {

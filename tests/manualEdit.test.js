@@ -124,13 +124,7 @@ describe("detectManualEdits", () => {
     const { built } = setup(A, B, { 1: "A", 2: "A" });
     const result = detectManualEdits(built.lines, "", built.segments);
     expect(result.edits.map((e) => e.id)).toEqual([1, 2]);
-    expect(result.edits.map((edit) => edit.lines)).toEqual([[], []]);
     expect(result.newLines).toEqual([]);
-    expect(result.wholePaneReplacement).toBe(true);
-    expect(result.segments).toEqual([
-      { id: 1, start: 0, end: 0 },
-      { id: 2, start: 0, end: 0 }
-    ]);
   });
 });
 

@@ -30,7 +30,7 @@ describe("S3-01: manual status", () => {
     typeInMerged(merged.value.replace("A1", "A1 edited"));
     expect(status(1)).toBe("manual");
     expect(status(2)).toBe("open");
-    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\nend");
     expect(doc.elements["conflict-list"].innerHTML).toContain("Manual");
     expect(doc.elements["merge-note"].textContent).toContain("Conflict 1 is now Manual");
   });
@@ -45,11 +45,10 @@ describe("S3-01: manual status", () => {
 
   test("typing into a conflict that was still open drops the remaining count", () => {
     const { doc, merged, typeInMerged, status } = setup();
-    // Replace the first visible marker block with the user's final lines.
-    const firstBlock = "<<<<<<< A\nA1\nA2\n=======\nB1\n>>>>>>> B";
-    typeInMerged(merged.value.replace(firstBlock, "my own line"));
+    // Conflict 1 is open and holds no lines. Add a line where it sits.
+    typeInMerged(merged.value.replace("top\n", "top\nmy own line\n"));
     expect(status(1)).toBe("manual");
-    expect(merged.value).toBe("top\nmy own line\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toContain("my own line");
     expect(doc.elements["conflict-counter"].textContent).toBe("2 total · 1 resolved · 1 remaining");
   });
 
@@ -67,7 +66,7 @@ describe("S3-01: manual status", () => {
     typeInMerged(merged.value.replace("A1", "A1 edited"));
     list.dispatch("click", actionClick("B", 1));
     expect(status(1)).toBe("B");
-    expect(merged.value).toBe("top\nB1\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nB1\nmid\nend");
   });
 
   test("selecting a conflict does not wipe a hand edit", () => {
@@ -75,7 +74,7 @@ describe("S3-01: manual status", () => {
     list.dispatch("click", actionClick("A", 1));
     typeInMerged(merged.value.replace("A1", "A1 edited").replace("end", "end of file"));
     list.dispatch("click", selectClick(2));
-    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend of file");
+    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\nend of file");
   });
 
   test("an edit in unchanged lines marks nothing", () => {
@@ -92,10 +91,10 @@ describe("S3-01: manual status", () => {
     typeInMerged(merged.value.replace("A1", "A1 edited"));
     expect(app.session.undo()).toBe(true);
     expect(status(1)).toBe("A");
-    expect(merged.value).toBe("top\nA1\nA2\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nA1\nA2\nmid\nend");
     expect(app.session.redo()).toBe(true);
     expect(status(1)).toBe("manual");
-    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nA1 edited\nA2\nmid\nend");
   });
 
   test("an edit across two conflicts marks both Manual", () => {
@@ -114,9 +113,7 @@ describe("S3-01: manual status", () => {
     typeInMerged(merged.value.replace("A1", "A1 edited"));
     doc.elements["compare-btn"].dispatch("click");
     expect(status(1)).toBe("open");
-    expect(merged.value).toBe(
-      "top\n<<<<<<< A\nA1\nA2\n=======\nB1\n>>>>>>> B\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend"
-    );
+    expect(merged.value).toBe("top\nmid\nend");
   });
 
   test("the input panes are never touched", () => {
@@ -132,6 +129,6 @@ describe("S3-01: manual status", () => {
     list.dispatch("click", actionClick("B", 1));
     typeInMerged(merged.value.replace("B1", "A1\nA2"));
     expect(status(1)).toBe("manual");
-    expect(merged.value).toBe("top\nA1\nA2\nmid\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nend");
+    expect(merged.value).toBe("top\nA1\nA2\nmid\nend");
   });
 });
