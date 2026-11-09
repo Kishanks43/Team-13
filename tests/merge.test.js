@@ -13,8 +13,10 @@ describe("buildMergedText", () => {
     expect(conflicts).toHaveLength(2);
   });
 
-  test("open conflicts contribute nothing yet; equal lines are copied", () => {
-    expect(buildMergedText(ops, conflicts, {})).toBe("top\nmiddle\nbottom");
+  test("open conflicts render standard Git markers; equal lines are copied", () => {
+    expect(buildMergedText(ops, conflicts, {})).toBe(
+      "top\n<<<<<<< A\nA1\nA2\n=======\nB1\n>>>>>>> B\nmiddle\n<<<<<<< A\nA3\n=======\nB2\nB3\n>>>>>>> B\nbottom"
+    );
   });
 
   test("Accept A inserts exactly the A lines", () => {

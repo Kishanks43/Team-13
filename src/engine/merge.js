@@ -11,6 +11,14 @@ export function linesForResolution(conflict, status) {
       return [...conflict.bLines];
     case "both":
       return [...conflict.aLines, ...conflict.bLines];
+    case "open":
+      return [
+        "<<<<<<< A",
+        ...conflict.aLines,
+        "=======",
+        ...conflict.bLines,
+        ">>>>>>> B"
+      ];
     default:
       return [];
   }
