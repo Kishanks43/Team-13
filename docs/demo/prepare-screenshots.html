@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team 13 demo screenshot preparation</title>
+  <style>
+    body { margin: 0; padding: 16px; font: 16px/1.5 system-ui, sans-serif; background: #eef2f6; color: #17202a; }
+    header { max-width: 1200px; margin: 0 auto 12px; }
+    h1 { margin: 0; font-size: 22px; }
+    p { margin: 4px 0; }
+    iframe { display: block; width: min(100%, 1240px); height: 1450px; margin: 0 auto; border: 1px solid #aab4bf; border-radius: 8px; background: white; }
+    #status { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Team 13 — Demo screenshot preparation</h1>
+    <p id="status" role="status" aria-live="polite">Preparing scenario…</p>
+  </header>
+  <iframe id="app-frame" title="Code Merge Simulator demo" src="../../index.html"></iframe>
+  <script type="module" src="./prepare-screenshots.js"></script>
+</body>
+</html>
