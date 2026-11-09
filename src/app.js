@@ -1,10 +1,13 @@
 import { diffText, summarize } from "./engine/diff.js";
 import { createSession } from "./engine/session.js";
-import { buildMerged, detectManualEdits } from "./engine/manualEdit.js";
+import { buildMergedText } from "./engine/merge.js";
 import { renderConflictList } from "./ui/conflictList.js";
+import { buildRows, renderSideBySide } from "./ui/diffView.js";
 import { formatProgress } from "./ui/progress.js";
-import { downloadText, copyText } from "./ui/exportMerged.js";
-import { checkMergeGuard } from "./engine/mergeGuard.js";
+import { describeMerge } from "./ui/mergeNote.js";
+import { formatLoadNote } from "./ui/paneInfo.js";
+import { loadFile } from "./fileLoader.js";
+import { samples, getSample } from "./samples.js";
 
 // Runs the diff on demand, and again 300 ms after the user stops typing once
 // the first Compare has happened. Timers are injectable so tests need no clock.
@@ -49,7 +52,7 @@ export function formatSummary(ops) {
 
 const lineCount = (text) => (text === "" ? 0 : text.split(/\r\n|\n|\r/).length);
 
-export function init(doc = document, timers = {}, exportDeps = {}) {
+export function init(doc = document, timers = {}) {
   const paneA = doc.getElementById("pane-a");
   const paneB = doc.getElementById("pane-b");
   const compareButton = doc.getElementById("compare-btn");
@@ -60,42 +63,17 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   const countB = doc.getElementById("count-b");
   const mergeNote = doc.getElementById("merge-note");
   const diffSummary = doc.getElementById("diff-summary"); // optional
+  const diffOutput = doc.getElementById("diff-output"); // optional
   const undoButton = doc.getElementById("undo-btn"); // optional
   const redoButton = doc.getElementById("redo-btn"); // optional
-  const downloadButton = doc.getElementById("download-btn"); // optional
-  const copyButton = doc.getElementById("copy-btn"); // optional
-  const exportNote = doc.getElementById("export-note"); // optional
-  const applyMergeButton = doc.getElementById("apply-merge-btn"); // optional (S3-07)
-  const applyMergeNote = doc.getElementById("apply-merge-note"); // optional (S3-07)
+  const sampleSelect = doc.getElementById("sample-select"); // optional
+  const loadSampleButton = doc.getElementById("load-sample-btn"); // optional
   const session = createSession();
   let currentOps = [];
-  // Lines the user typed for conflicts marked "manual", and where each conflict sits in the
-  // merged pane. Both are rebuilt on every compare.
-  let manualLines = {};
-  let built = { lines: [], segments: [] };
-  let shownConflicts = null;
-  let shownResolutions = null;
-  let marking = false;
 
   const updateCounts = () => {
     countA.textContent = `${lineCount(paneA.value)} lines`;
     countB.textContent = `${lineCount(paneB.value)} lines`;
-  };
-
-  // S3-07: The Apply Merge button is disabled while any conflict is open or markers remain,
-  // and explains why (for example, "2 conflicts left"). It enables as soon as the last one is resolved.
-  const updateApplyMergeGuard = () => {
-    if (!applyMergeButton) return;
-    const guard = checkMergeGuard({
-      hasCompared: comparer.isLive(),
-      progress: session.getState().progress,
-      mergedText: mergedResult ? mergedResult.value : ""
-    });
-    applyMergeButton.disabled = !guard.allowed;
-    applyMergeButton.setAttribute("aria-disabled", String(!guard.allowed));
-    if (applyMergeNote) {
-      applyMergeNote.textContent = guard.reason;
-    }
   };
 
   // Runs on every session change (load, resolve, select). The counter updates here,
@@ -103,20 +81,12 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   const render = (state) => {
     conflictCounter.textContent = formatProgress(state.progress);
     conflictList.innerHTML = renderConflictList(state.conflicts, state.resolutions, state.selectedId);
-    // The merged text is rebuilt only when the conflicts or their resolutions change, so
-    // selecting a conflict never wipes a hand edit. Typing in the merged pane never reaches
-    // here, and nothing here ever writes to pane-a or pane-b.
-    const changed = state.conflicts !== shownConflicts || state.resolutions !== shownResolutions;
-    shownConflicts = state.conflicts;
-    shownResolutions = state.resolutions;
-    if (changed && !marking) {
-      built = buildMerged(currentOps, state.conflicts, state.resolutions, manualLines);
-      const text = built.lines.join("\n");
-      if (mergedResult.value !== text) mergedResult.value = text;
-    }
+    // Only a session change rebuilds the merged text. Typing in the merged pane
+    // never reaches this function, and nothing here ever writes to pane-a or pane-b.
+    mergedResult.value = buildMergedText(currentOps, state.conflicts, state.resolutions);
+    mergeNote.textContent = describeMerge(state.progress);
     if (undoButton) undoButton.disabled = !session.canUndo();
     if (redoButton) redoButton.disabled = !session.canRedo();
-    updateApplyMergeGuard();
   };
   session.subscribe(render);
 
@@ -126,11 +96,9 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     getB: () => paneB.value,
     render: (ops) => {
       currentOps = ops;
-      manualLines = {};
       if (diffSummary) diffSummary.textContent = formatSummary(ops);
+      if (diffOutput) diffOutput.innerHTML = renderSideBySide(buildRows(ops));
       session.load(ops);
-      mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
-      updateApplyMergeGuard();
     }
   });
 
@@ -149,63 +117,13 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     if (select) session.select(Number(select.dataset.conflictId));
   });
 
-  // S2-05 decision: a hand edit changes only the merged pane. It never touches pane-a, pane-b
-  // or the text of any other conflict. S3-01: a conflict the edit lands in is marked "manual",
-  // so it shows a Manual badge and counts as resolved.
+  // S2-05 decision: a hand edit changes only the merged pane. It does not touch
+  // pane-a, pane-b or the resolution state. The next resolution click or
+  // re-compare rebuilds the merged text, so the note says so.
   mergedResult.addEventListener("input", () => {
-    const result = detectManualEdits(built.lines, mergedResult.value, built.segments);
-    built = { lines: result.newLines, segments: result.segments };
-    if (result.edits.length === 0) {
-      mergeNote.textContent = "Edited by hand. Inputs are untouched. Re-comparing rebuilds this text.";
-      updateApplyMergeGuard();
-      return;
-    }
-    marking = true;
-    try {
-      for (const edit of result.edits) {
-        manualLines[edit.id] = edit.lines;
-        session.resolve(edit.id, "manual");
-      }
-    } finally {
-      marking = false;
-    }
-    const ids = result.edits.map((edit) => edit.id).join(", ");
-    mergeNote.textContent = `Edited by hand. Conflict ${ids} is now Manual. Inputs are untouched.`;
-    updateApplyMergeGuard();
+    mergeNote.textContent =
+      "Edited by hand. Inputs are untouched. Choosing a resolution or re-comparing rebuilds this text.";
   });
-
-  // S3-07: Apply Merge click action.
-  if (applyMergeButton) {
-    applyMergeButton.addEventListener("click", () => {
-      const guard = checkMergeGuard({
-        hasCompared: comparer.isLive(),
-        progress: session.getState().progress,
-        mergedText: mergedResult.value
-      });
-      if (!guard.allowed) return;
-      if (applyMergeNote) {
-        applyMergeNote.textContent = "Merge applied successfully.";
-      }
-      if (exportNote) {
-        exportNote.textContent = "Merge applied. Ready to download or copy.";
-      }
-    });
-  }
-
-  // S3-08: the file and the clipboard get exactly what the Merged Result pane holds.
-  const say = (result) => {
-    if (exportNote) exportNote.textContent = result.message;
-  };
-  if (downloadButton) {
-    downloadButton.addEventListener("click", () => {
-      say(downloadText(mergedResult.value, { doc, ...exportDeps }));
-    });
-  }
-  if (copyButton) {
-    copyButton.addEventListener("click", async () => {
-      say(await copyText(mergedResult.value, { doc, ...exportDeps }));
-    });
-  }
 
   if (undoButton) undoButton.addEventListener("click", () => session.undo());
   if (redoButton) redoButton.addEventListener("click", () => session.redo());
@@ -216,10 +134,53 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   };
   paneA.addEventListener("input", onPaneInput);
   paneB.addEventListener("input", onPaneInput);
-  updateCounts();
-  updateApplyMergeGuard();
 
-  return { comparer, session, getOps: () => currentOps, updateApplyMergeGuard };
+  // Samples
+  if (sampleSelect) {
+    if (sampleSelect.options.length === 0) {
+      for (const sample of samples) {
+        const option = doc.createElement("option");
+        option.value = sample.id;
+        option.textContent = sample.name;
+        sampleSelect.appendChild(option);
+      }
+    }
+    if (loadSampleButton) {
+      loadSampleButton.addEventListener("click", () => {
+        const sample = getSample(sampleSelect.value);
+        if (!sample) return;
+        paneA.value = sample.a;
+        paneB.value = sample.b;
+        comparer.compare();
+        updateCounts();
+      });
+    }
+  }
+
+  // File loading: each pane has a Load button, a hidden file input and a note.
+  for (const side of ["a", "b"]) {
+    const button = doc.getElementById(`load-${side}-btn`);
+    const input = doc.getElementById(`file-${side}`);
+    const note = doc.getElementById(`note-${side}`);
+    const pane = side === "a" ? paneA : paneB;
+    if (!button || !input) continue;
+    button.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const result = await loadFile(file);
+      if (note) note.textContent = formatLoadNote(result); // textContent: file names are user text
+      if (result.ok) {
+        pane.value = result.text;
+        onPaneInput();
+      }
+      input.value = ""; // so choosing the same file again still fires "change"
+    });
+  }
+
+  updateCounts();
+
+  return { comparer, session, getOps: () => currentOps };
 }
 
 // Auto-start only on the real page. Tests import this module with an empty DOM and call

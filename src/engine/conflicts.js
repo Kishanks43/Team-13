@@ -1,32 +1,30 @@
 import { diffText } from "./diff.js";
 
-// A conflict is one maximal run of non-equal ops in the A-versus-B diff.
-// Shape: { id, type, aStart, bStart, aLines, bLines, opStart, opEnd }
+// A conflict is one maximal run of non-equal ops. Ids count from 1.
 export function findConflicts(ops) {
   const conflicts = [];
-  let aSeen = 0; // A lines before the current position
-  let bSeen = 0; // B lines before the current position
+  let aCount = 0;
+  let bCount = 0;
   let i = 0;
-
   while (i < ops.length) {
     if (ops[i].type === "equal") {
-      aSeen++;
-      bSeen++;
+      aCount++;
+      bCount++;
       i++;
       continue;
     }
     const opStart = i;
-    const aStart = aSeen + 1;
-    const bStart = bSeen + 1;
+    const aStart = aCount + 1;
+    const bStart = bCount + 1;
     const aLines = [];
     const bLines = [];
     while (i < ops.length && ops[i].type !== "equal") {
       if (ops[i].type === "remove") {
         aLines.push(ops[i].text);
-        aSeen++;
+        aCount++;
       } else {
         bLines.push(ops[i].text);
-        bSeen++;
+        bCount++;
       }
       i++;
     }

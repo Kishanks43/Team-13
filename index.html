@@ -1,66 +1,80 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="A browser-based code merge simulator">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-  <title>Team 13 · Code Merge Simulator</title>
+  <meta charset="utf-8">
+  <title>Code Merge Simulator</title>
   <link rel="stylesheet" href="src/ui/app.css">
+  <link rel="stylesheet" href="src/ui/diff.css">
+  <script type="module" src="src/app.js"></script>
 </head>
 <body>
-  <main class="app-shell">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">TEAM 13 · SPRINT 3</p>
-        <h1>Code Merge Simulator</h1>
-        <p class="subtitle">Review each conflict and build your merged result.</p>
-      </div>
-      <button id="compare-btn" class="button button-primary" type="button">Compare versions</button>
-    </header>
+  <header class="site-header">
+    <h1>Code Merge Simulator</h1>
+    <p>Compare two versions of some code, resolve every conflict, and build one merged result.</p>
+  </header>
 
-    <section class="input-grid" aria-label="Input versions">
-      <article class="panel">
-        <div class="panel-heading"><h2>Version A</h2><span id="count-a" class="muted">0 lines</span></div>
-        <textarea id="pane-a" spellcheck="false" aria-label="Version A code" placeholder="Paste or type Version A here"></textarea>
-      </article>
-      <article class="panel">
-        <div class="panel-heading"><h2>Version B</h2><span id="count-b" class="muted">0 lines</span></div>
-        <textarea id="pane-b" spellcheck="false" aria-label="Version B code" placeholder="Paste or type Version B here"></textarea>
-      </article>
+  <noscript><p class="notice">This tool needs JavaScript to compare and merge code.</p></noscript>
+
+  <main id="main">
+    <section class="toolbar" aria-labelledby="start-heading">
+      <h2 id="start-heading" class="sr-only">Start</h2>
+      <div class="field-inline">
+        <label for="sample-select">Sample scenario</label>
+        <select id="sample-select"></select>
+        <button type="button" id="load-sample-btn" class="secondary">Load sample</button>
+      </div>
+      <button type="button" id="compare-btn" class="primary">Compare</button>
     </section>
 
-    <section class="panel conflict-panel">
-      <div class="panel-heading">
-        <div><h2>Conflicts</h2><p id="conflict-counter" class="muted" aria-live="polite">0 total · 0 resolved · 0 remaining</p></div>
-        <div class="conflict-history" role="group" aria-label="Resolution history">
-          <button id="undo-btn" class="button button-small" type="button" disabled>Undo</button>
-          <button id="redo-btn" class="button button-small" type="button" disabled>Redo</button>
+    <section class="panes" aria-labelledby="inputs-heading">
+      <h2 id="inputs-heading" class="sr-only">Versions to compare</h2>
+      <div class="pane">
+        <label for="pane-a" class="pane-label">Version A</label>
+        <textarea id="pane-a" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" rows="12"></textarea>
+        <div class="pane-meta">
+          <button type="button" id="load-a-btn" class="secondary">Load Version A from file</button>
+          <input type="file" id="file-a" accept=".txt,.js,.json,.md,.css,.html,.py,.java,.c,.cpp,.ts,text/*" hidden tabindex="-1">
+          <span id="count-a" class="count">0 lines</span>
+        </div>
+        <p id="note-a" class="note"></p>
+      </div>
+
+      <div class="pane">
+        <label for="pane-b" class="pane-label">Version B</label>
+        <textarea id="pane-b" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" rows="12"></textarea>
+        <div class="pane-meta">
+          <button type="button" id="load-b-btn" class="secondary">Load Version B from file</button>
+          <input type="file" id="file-b" accept=".txt,.js,.json,.md,.css,.html,.py,.java,.c,.cpp,.ts,text/*" hidden tabindex="-1">
+          <span id="count-b" class="count">0 lines</span>
+        </div>
+        <p id="note-b" class="note"></p>
+      </div>
+    </section>
+
+    <section aria-labelledby="diff-heading">
+      <h2 id="diff-heading">Differences</h2>
+      <p id="diff-summary" class="summary">Press Compare to see the differences.</p>
+      <div id="diff-output" class="diff-output"></div>
+    </section>
+
+    <section aria-labelledby="conflicts-heading">
+      <h2 id="conflicts-heading">Conflicts</h2>
+      <div class="conflict-bar">
+        <p id="conflict-counter" class="summary">No conflicts</p>
+        <div class="button-row">
+          <button type="button" id="undo-btn" class="secondary" disabled>Undo</button>
+          <button type="button" id="redo-btn" class="secondary" disabled>Redo</button>
         </div>
       </div>
-      <div id="conflict-list" class="conflict-list" aria-live="polite">
-        <p class="empty-state">Compare two versions to find conflicts.</p>
-      </div>
+      <div id="conflict-list" class="conflict-list"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading">
-        <div><h2>Merged Result</h2><p class="muted">Choose a resolution above, then edit this result if needed.</p></div>
-      </div>
-      <textarea id="merged-result" class="merged-editor" spellcheck="false" aria-label="Editable merged result" placeholder="Your merged code will appear here"></textarea>
-      <p id="merge-note" class="muted" aria-live="polite">The merged result is independent of the two input panes.</p>
-      <div class="apply-merge-row">
-        <button id="apply-merge-btn" class="button button-primary" type="button" disabled aria-disabled="true">Apply Merge</button>
-        <span id="apply-merge-note" class="muted" role="status" aria-live="polite">Compare versions to begin</span>
-      </div>
-      <div class="export-row">
-        <button id="download-btn" class="button" type="button">Download merged file</button>
-        <button id="copy-btn" class="button" type="button">Copy merged result</button>
-        <span id="export-note" class="muted" role="status" aria-live="polite"></span>
-      </div>
+    <section aria-labelledby="merged-heading">
+      <h2 id="merged-heading">Merged result</h2>
+      <label for="merged-result" class="pane-label">Merged text (you can edit it)</label>
+      <textarea id="merged-result" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" rows="14"></textarea>
+      <p id="merge-note" class="note">Press Compare to start.</p>
     </section>
-    <footer> Sprint 3 · S3-07 Apply Merge guard · S3-08 Download/Copy merged file </footer>
   </main>
-  <script type="module" src="src/app.js"></script>
 </body>
 </html>

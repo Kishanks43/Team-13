@@ -1,57 +1,39 @@
-# Code Merge Simulator: story notes
+# Code Merge Simulator
 
-Run these from the repository root:
+A browser tool for comparing two versions of code, resolving every conflict, and building a
+merged result. Plain HTML, CSS and JavaScript (ES modules). No build step.
 
-```bash
-npm install
-npm test
+## Run it
+
+```
+npm ci
+npm start        # http://localhost:8080
 npm run lint
-npm start
+npm test
 ```
 
-Then open `http://localhost:8080` for the main page, or `http://localhost:8080/upload-demo.html` to try the upload checks.
+Needs Node 22 or newer. The only dependencies are dev tools.
 
-## S1-05: Reject bad uploads
+## Layout
 
-Reject bad uploads with a clear message so nothing breaks (roadmap story S1-05, issue #5).
-Binary files and files over 2 MB are refused. This also covers the S2-11 bug fix, which restores
-these checks in `src/fileLoader.js`.
+```
+index.html            page markup
+src/app.js            wires the page to the engine
+src/samples.js        three built-in scenarios
+src/fileLoader.js     safe file reading (2 MB limit, binary check)
+src/engine/           diff, conflicts, resolutions, session (undo/redo), merge
+src/ui/               HTML builders for the diff and conflict list, CSS
+tests/                Jest tests (engine in Node, page tests in jsdom)
+docs/                 one notes file per Sprint 3 story that is present in this tree
+```
 
-`loadFile(file)` resolves to `{ ok: true, name, text }` or `{ ok: false, name, error }` and never throws.
-It refuses:
-- files over 2 MB (`MAX_FILE_BYTES`). The size is checked before reading, and again on the bytes
-  actually read, because a reported size can be wrong.
-- binary files: known signatures (PDF, PNG, JPEG, GIF, ZIP, gzip, executables), any NUL byte, or
-  many control characters at the start of the file.
-- UTF-16 text and text that is not valid UTF-8, each with its own message.
+## Notes for the team
 
-Text files load exactly as written (line endings, tabs, unicode). A 500-line file loads in well under 1 second.
-
-Files:
-- `src/fileLoader.js` — the loader and its checks.
-- `tests/fileLoader.test.js` — 38 tests, including random (property-style) ones.
-- `upload-demo.html` — a small page to try the checks by hand.
-
-## S2-06: Tests for untouched input panes
-
-Tests proving that Version A and Version B stay byte-for-byte unchanged by any merge edit
-(roadmap story S2-06, issue #16).
-
-What the tests prove:
-- Resolving conflicts (Accept A, B, Both), selecting conflicts, editing the merged pane by hand,
-  and re-comparing never change `pane-a` or `pane-b`.
-- The app never even writes to the input panes (write counters stay at zero).
-- Exact bytes are kept for tricky text: CRLF and lone CR, trailing newlines, tabs, a byte order mark,
-  unicode, 5,000-character lines, empty and identical inputs.
-- A seeded random (property-style) test runs 150 sessions of 25 random actions each.
-- The engine never changes its inputs: diffing, conflict finding, merging and the session are run on
-  deep-frozen data, so any in-place change would throw.
-
-Files:
-- `tests/inputsUntouched.test.js` — the S2-06 tests.
-- `tests/helpers/` — `fakeDom.js` (a small stand-in for the page) and `seeded.js` (repeatable random numbers).
-- `index.html` — the page, so you can try the story by hand.
-
-## Tooling
-
-`package.json` and `eslint.config.js` hold the project scripts and tooling. CI runs `npm ci`, `npm test` and `npm run lint` on Node 22.
+* The merged text is joined with `\n` and has no trailing newline, so identical inputs
+  merge to identical text.
+* A conflict marked `manual` takes its text from `buildMergedText(..., manualLines)` when
+  given; that wiring belongs to the manual-edit story.
+* Typing in the merged pane never changes the resolutions; the next resolution or re-compare
+  rebuilds the text (decision S2-05).
+* The README is the same in every Sprint 3 story branch on purpose, so branches do not
+  conflict on it. Story notes live in `docs/S3-0x-*.md`.
