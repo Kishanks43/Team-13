@@ -118,7 +118,11 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     if (changed && !marking) {
       built = buildMergedWithMarkers(currentOps, state.conflicts, state.resolutions, manualLines);
       const text = built.lines.join("\n");
-      if (mergedResult.value !== text) mergedResult.value = text;
+      if (mergedResult.value !== text) mergedResult.value = text;      // A note about a hand edit is out of date once the text has been rebuilt (Undo, Redo
+      // or a new resolution), so replace it.
+      if (mergeNote.textContent.startsWith("Edited by hand")) {
+        mergeNote.textContent = "Merged result updated from your resolutions. Inputs are untouched.";
+      }
     }
     if (undoButton) undoButton.disabled = !session.canUndo();
     if (redoButton) redoButton.disabled = !session.canRedo();
