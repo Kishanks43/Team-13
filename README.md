@@ -63,6 +63,11 @@ The expected Pages URL is `https://kishanks43.github.io/Team-13/` once the repos
 **Settings → Pages → Source: GitHub Actions** and the deployment workflow succeeds.
 
 
+## Sprint 3 bug fixes
+
+- **B-03 (#93):** Apply Merge now ignores source lines that start with `<<<<<<<`; only the app's own conflict markers block it.
+- **B-05 (#95):** Apply Merge is blocked when both input panes are empty, and a stale "Merge applied" note is cleared after Undo.
+
 ## Testing documentation
 
 - **Test Case Document (Sprint 3 update):** [`docs/Test_Case_Document_Team13.md`](docs/Test_Case_Document_Team13.md) and [`docs/Test_Case_Document_Team13.docx`](docs/Test_Case_Document_Team13.docx) — T-03 (#88).
