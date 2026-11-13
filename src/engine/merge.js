@@ -44,17 +44,21 @@ export function buildMergedText(ops, conflicts, resolutions) {
 
 const splitForScan = (text) => (text ? String(text).split(/\r\n|\n|\r/) : []);
 
-const START_LINE = /^<{7}(?: |$)/;
-const END_LINE = /^>{7}(?: |$)/;
+// Only the markers this app writes are blocking. A source file may legitimately
+// contain lines that start with "<<<<<<<" (for example a heredoc or a Git conflict
+// from another tool), and those must not keep Apply Merge disabled forever.
+const APP_START_LINE = /^<{7} A$/;
+const APP_END_LINE = /^>{7} B$/;
 
-// How many conflict blocks are still marked in the text (one per "<<<<<<<" line).
+// How many of the app's own conflict blocks are still marked in the text.
 export function countConflictMarkers(text) {
-  return splitForScan(text).filter((line) => START_LINE.test(line)).length;
+  return splitForScan(text).filter((line) => APP_START_LINE.test(line)).length;
 }
 
-// True if any start or end marker line is left in the text. S3-07 uses this so a
-// half-deleted block still counts as unresolved. A lone "=======" line is ignored,
-// because it is a normal line in many files (for example under a Markdown heading).
+// True if any of the app's own start or end marker lines is left in the text.
+// S3-07 uses this so a half-deleted block still counts as unresolved. A lone
+// "=======" line is ignored, because it is a normal line in many files (for
+// example under a Markdown heading).
 export function hasConflictMarkers(text) {
-  return splitForScan(text).some((line) => START_LINE.test(line) || END_LINE.test(line));
+  return splitForScan(text).some((line) => APP_START_LINE.test(line) || APP_END_LINE.test(line));
 }

@@ -33,6 +33,17 @@ describe("hasConflictMarkers and countConflictMarkers", () => {
     expect(countConflictMarkers("Title\n=======\nText")).toBe(0);
   });
 
+  test("a source line starting with <<<<<<< is not one of the app's markers", () => {
+    const text = "<<<<<<< HEAD\nconst marker = 'source';\n>>>>>>> upstream";
+    expect(hasConflictMarkers(text)).toBe(false);
+    expect(countConflictMarkers(text)).toBe(0);
+  });
+
+  test("still detects the app's own start and end markers", () => {
+    expect(hasConflictMarkers("line\n<<<<<<< A\nleft\n=======\nright")).toBe(true);
+    expect(hasConflictMarkers("line\nleft\n=======\nright\n>>>>>>> B")).toBe(true);
+  });
+
   test("handles empty or null text safely", () => {
     expect(hasConflictMarkers("")).toBe(false);
     expect(hasConflictMarkers(null)).toBe(false);
