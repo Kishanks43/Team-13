@@ -14,11 +14,12 @@ export default [
         HTMLElement: "readonly",
         DOMParser: "readonly",
         TextDecoder: "readonly",
-        URL: "readonly"
+        URL: "readonly",
+        URLSearchParams: "readonly"
       }
     },
     rules: {
-      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
       "no-undef": "error",
       "no-unreachable": "error",
       "no-constant-condition": "error"

@@ -95,7 +95,8 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     const guard = checkMergeGuard({
       hasCompared: comparer.isLive(),
       progress: session.getState().progress,
-      mergedText: mergedResult ? mergedResult.value : ""
+      mergedText: mergedResult ? mergedResult.value : "",
+      bothPanesEmpty: paneA.value === "" && paneB.value === ""
     });
     applyMergeButton.disabled = !guard.allowed;
     applyMergeButton.setAttribute("aria-disabled", String(!guard.allowed));
@@ -129,6 +130,14 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
     updateApplyMergeGuard();
   };
   session.subscribe(render);
+
+  // Any resolution change, including Undo, makes a previous "Merge applied" message
+  // stale: the text the user is looking at is no longer the merge that was applied.
+  session.subscribe(() => {
+    if (exportNote && exportNote.textContent.startsWith("Merge applied")) {
+      exportNote.textContent = "";
+    }
+  });
 
   const comparer = createComparer({
     ...timers,
@@ -222,7 +231,8 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
       const guard = checkMergeGuard({
         hasCompared: comparer.isLive(),
         progress: session.getState().progress,
-        mergedText: mergedResult.value
+        mergedText: mergedResult.value,
+        bothPanesEmpty: paneA.value === "" && paneB.value === ""
       });
       if (!guard.allowed) return;
       if (applyMergeNote) {

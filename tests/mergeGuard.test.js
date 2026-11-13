@@ -109,6 +109,37 @@ describe("checkMergeGuard and canApplyMerge", () => {
     })).toBe(true);
   });
 
+  test("blocks when both input panes are empty", () => {
+    const res = checkMergeGuard({
+      hasCompared: true,
+      progress: { total: 0, resolved: 0, remaining: 0 },
+      mergedText: "",
+      bothPanesEmpty: true
+    });
+    expect(res.allowed).toBe(false);
+    expect(res.reason).toBe("Both panes are empty");
+  });
+
+  test("allows when only one input pane is empty", () => {
+    const res = checkMergeGuard({
+      hasCompared: true,
+      progress: { total: 0, resolved: 0, remaining: 0 },
+      mergedText: "some code",
+      bothPanesEmpty: false
+    });
+    expect(res.allowed).toBe(true);
+  });
+
+  test("allows after resolution even when the source has a <<<<<<< line", () => {
+    const res = checkMergeGuard({
+      hasCompared: true,
+      progress: { total: 1, resolved: 1, remaining: 0 },
+      mergedText: "<<<<<<< HEAD\nconst kept = true;\n>>>>>>> upstream"
+    });
+    expect(res.allowed).toBe(true);
+    expect(res.reason).toBe("Ready to apply merge");
+  });
+
   test("allows when identical inputs have 0 total conflicts", () => {
     const res = checkMergeGuard({
       hasCompared: true,

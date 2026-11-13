@@ -12,17 +12,30 @@ import { hasConflictMarkers } from "./merge.js";
  * @param {boolean} [options.hasCompared=false] - whether a comparison has run
  * @param {Object} [options.progress={ total: 0, remaining: 0 }] - session progress
  * @param {string} [options.mergedText=""] - current text in the merged result pane
+ * @param {boolean} [options.bothPanesEmpty=false] - whether both input panes are empty
  * @returns {{ allowed: boolean, reason: string }}
  */
 export function checkMergeGuard({
   hasCompared = false,
   progress = { total: 0, remaining: 0 },
-  mergedText = ""
+  mergedText = "",
+  bothPanesEmpty = false,
+  panesEmpty = false,
+  paneAEmpty,
+  paneBEmpty
 } = {}) {
   if (!hasCompared) {
     return {
       allowed: false,
       reason: "Compare versions to begin"
+    };
+  }
+
+  const noInput = bothPanesEmpty || panesEmpty || (paneAEmpty === true && paneBEmpty === true);
+  if (noInput) {
+    return {
+      allowed: false,
+      reason: "Both panes are empty"
     };
   }
 

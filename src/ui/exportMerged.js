@@ -55,7 +55,7 @@ export async function copyText(text, { nav, doc = globalThis.document } = {}) {
       await clipboard.writeText(text);
       return { ok: true, message: "Copied the merged result." };
     }
-  } catch (error) {
+  } catch (_error) {
     // fall through to the older way
   }
   try {
@@ -69,7 +69,7 @@ export async function copyText(text, { nav, doc = globalThis.document } = {}) {
     const copied = doc.execCommand("copy");
     area.remove();
     if (copied) return { ok: true, message: "Copied the merged result." };
-  } catch (error) {
+  } catch (_error) {
     // report below
   }
   return { ok: false, message: "Copying was blocked. Select the text and copy it by hand." };

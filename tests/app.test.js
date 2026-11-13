@@ -188,6 +188,18 @@ describe("init", () => {
       expect(doc.elements["apply-merge-note"].textContent).toBe("Ready to apply merge");
     });
 
+    test("Apply Merge stays disabled when both input panes are empty", () => {
+      const { doc } = setup("", "");
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(true);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Both panes are empty");
+    });
+
+    test("a source line that starts with <<<<<<< does not block Apply Merge", () => {
+      const { doc } = setup("a\n<<<<<<< HEAD\nb", "a\n<<<<<<< HEAD\nb");
+      expect(doc.elements["apply-merge-btn"].disabled).toBe(false);
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Ready to apply merge");
+    });
+
     test("clicking enabled Apply Merge reports success", () => {
       const { doc } = setup("a\n1\nb", "a\nX\nb");
       doc.elements["conflict-list"].dispatch("click", actionClick("A", 1));
@@ -195,6 +207,19 @@ describe("init", () => {
 
       doc.elements["apply-merge-btn"].dispatch("click");
       expect(doc.elements["apply-merge-note"].textContent).toBe("Merge applied successfully.");
+    });
+
+    test("Undo clears the Merge applied note", () => {
+      const { doc, session } = setup("a\n1\nb", "a\nX\nb");
+      doc.elements["conflict-list"].dispatch("click", actionClick("A", 1));
+
+      doc.elements["apply-merge-btn"].dispatch("click");
+      expect(doc.elements["apply-merge-note"].textContent).toBe("Merge applied successfully.");
+      expect(doc.elements["export-note"].textContent).toBe("Merge applied. Ready to download or copy.");
+
+      session.undo();
+      expect(doc.elements["apply-merge-note"].textContent).toBe("1 conflict left");
+      expect(doc.elements["export-note"].textContent).toBe("");
     });
 
     test("disables if conflict markers remain in the merged result pane", () => {

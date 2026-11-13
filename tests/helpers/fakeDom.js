@@ -34,7 +34,8 @@ const IDS = [
   "count-b",
   "merge-note",
   "apply-merge-btn",
-  "apply-merge-note"
+  "apply-merge-note",
+  "export-note"
 ];
 
 export function createFakeDoc() {

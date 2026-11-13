@@ -2,8 +2,8 @@
 
 **Project:** Web-Based Code Merge Simulator  
 **Team No:** 13  
-**Version:** 1.0  
-**Date:** 09-11-2026  
+**Version:** 1.1  
+**Date:** 13-11-2026  
 **Authors:** Kishan Kabadi S (`Kishanks43`), Madan P (`madan-p-debug`), Saurav Shashidhara (`sauravs2006-max`)  
 **SRS Reference:** `docs/SRS_Team13.docx`  
 **Test Plan Reference:** `docs/Test_Plan_Team13.docx`  
@@ -15,7 +15,7 @@
 This System Validation Report documents the comprehensive end-to-end verification of the **Web-Based Code Merge Simulator** following the completion of Sprints 1, 2, and 3. The primary goal is to provide verified empirical evidence that the integrated simulator complies with all functional requirements (CMS-F-001 to CMS-F-042), non-functional requirements (CMS-NF-001 to CMS-NF-006), and security requirements (CMS-SR-001 to CMS-SR-007) defined in the SRS.
 
 ### Key Validation Highlights
-- **Automated Test Execution:** **26 test suites, 362 automated unit/integration/E2E tests (100% Pass Rate, 0 Failures)**.
+- **Automated Test Execution:** **30 test suites, 391 automated unit/integration/E2E tests (100% Pass Rate, 0 Failures)**.
 - **Requirement Verification:** **32 Requirements Achieved (A, 91.4%)**, **2 Partially Achieved (P, 5.7%)**, **1 Deferred (N, 2.9%)**.
 - **Performance Benchmark:** 2,000-line Myers diff comparison completes in **0.15 seconds** (comfortably under the 2.0-second limit).
 - **Security & Privacy:** Verified client-side only processing (0 external HTTP calls, 0 cookies/local storage used); full anti-XSS payload sanitization; strict Content Security Policy.
@@ -69,7 +69,7 @@ This System Validation Report documents the comprehensive end-to-end verificatio
 | **TC-Compat-01** | Cross-browser compatibility | CMS-NF-003 | **PASS** | Passes on Chrome, Firefox, Edge, Safari; zero vendor-specific polyfills needed. |
 | **TC-Rel-01** | Input pane immutability | CMS-NF-004 | **PASS** | Property tests with 1,000 random mutations prove input panes are never touched. |
 | **TC-Mnt-01** | Engine separation & test coverage | CMS-NF-006 | **PASS** | Pure engine logic decoupled from DOM; high branch and statement coverage. |
-| **TC-Sec-01** | HTTPS transport security | CMS-SR-001 | **PASS** | GitHub Pages enforces HSTS and TLS/HTTPS encryption. |
+| **TC-Sec-01** | HTTPS transport security | CMS-SR-001 | **N/A** | Not verified: GitHub Pages is not enabled for this repository (`has_pages: false`). The app is currently served locally over HTTP; HTTPS/HSTS must be re-checked after Pages is enabled and the deploy workflow runs. |
 | **TC-Sec-02** | Safe rendering of user code (anti-XSS) | CMS-SR-002 | **PASS** | 10 XSS script/image/svg payloads safely escaped via `escapeHtml()`; 0 executed. |
 | **TC-Sec-03** | Client-side privacy audit | CMS-SR-003 | **PASS** | Network DevTools confirms 0 external requests; 0 cookies/local storage used. |
 | **TC-Sec-04** | Content Security Policy (CSP) | CMS-SR-004 | **PASS** | Strict meta tag `default-src 'none'; script-src 'self'` verified without violations. |
@@ -122,4 +122,4 @@ This System Validation Report documents the comprehensive end-to-end verificatio
 
 ## 6. Conclusion & Release Readiness
 
-The Web-Based Code Merge Simulator (Team 13) has **successfully achieved all required validation criteria**. With **362 automated tests passing**, 100% clean ESLint compliance, verified anti-XSS protection, WCAG AA accessibility, sub-200ms responsiveness, and zero runtime dependencies, the software is certified as **RELEASE READY** for deployment and demonstration.
+The Web-Based Code Merge Simulator (Team 13) has completed its validation criteria for demonstration. With **391 automated tests passing**, a clean ESLint run (0 errors), verified anti-XSS protection, WCAG AA accessibility, sub-200ms responsiveness, and zero runtime dependencies, the software is **ready for the final demonstration** and is a **release candidate**. It is not yet a released product: HTTPS transport security remains unverified because GitHub Pages is not enabled in this repository.
