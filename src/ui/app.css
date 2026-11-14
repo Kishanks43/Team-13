@@ -142,8 +142,17 @@ button, textarea, a { -webkit-tap-highlight-color: transparent; }
 .conflict-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .empty-state { margin: 0; color: var(--muted); }
 
-.diff-table { width: 100%; border-collapse: collapse; font: 14px ui-monospace, Menlo, Consolas, monospace; }
-.diff-table td { padding: 0 6px; vertical-align: top; white-space: pre-wrap; }
-.diff-table .num, .diff-table .marker { color: var(--muted); text-align: right; width: 3ch; }
 
 footer { color: var(--muted); font-size: 13px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.sample-row, .file-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.select {
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  border-radius: 8px; padding: 6px 10px; font: inherit;
+}
+.diff-output { max-height: 360px; overflow: auto; }
+.conflict-history { display: flex; gap: 8px; flex-wrap: wrap; }

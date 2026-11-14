@@ -11,6 +11,12 @@ import { renderConflictList } from "./ui/conflictList.js";
 import { formatProgress } from "./ui/progress.js";
 import { downloadText, copyText } from "./ui/exportMerged.js";
 import { checkMergeGuard } from "./engine/mergeGuard.js";
+import { buildRows, renderSideBySide } from "./ui/diffView.js";
+import { nextConflictId, prevConflictId, scrollConflictIntoView } from "./ui/conflictNav.js";
+import { isTextEntry, undoRedoAction } from "./ui/undoKeys.js";
+import { samples, getSample } from "./samples.js";
+import { loadFile } from "./fileLoader.js";
+import { describeLines } from "./ui/paneInfo.js";
 
 // Runs the diff on demand, and again 300 ms after the user stops typing once
 // the first Compare has happened. Timers are injectable so tests need no clock.
@@ -53,8 +59,6 @@ export function formatSummary(ops) {
   return `${added} added · ${removed} removed · ${unchanged} unchanged`;
 }
 
-const lineCount = (text) => (text === "" ? 0 : text.split(/\r\n|\n|\r/).length);
-
 export function init(doc = document, timers = {}, exportDeps = {}) {
   const paneA = doc.getElementById("pane-a");
   const paneB = doc.getElementById("pane-b");
@@ -73,6 +77,12 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   const exportNote = doc.getElementById("export-note"); // optional
   const applyMergeButton = doc.getElementById("apply-merge-btn"); // optional (S3-07)
   const applyMergeNote = doc.getElementById("apply-merge-note"); // optional (S3-07)
+  const diffOutput = doc.getElementById("diff-output"); // optional
+  const prevButton = doc.getElementById("prev-btn"); // optional
+  const nextButton = doc.getElementById("next-btn"); // optional
+  const sampleSelect = doc.getElementById("sample-select"); // optional
+  const loadSampleButton = doc.getElementById("load-sample-btn"); // optional
+  const sampleNote = doc.getElementById("sample-note"); // optional
   const session = createSession();
   let currentOps = [];
   // Lines the user typed for conflicts marked "manual", and where each conflict sits in the
@@ -84,8 +94,8 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
   let marking = false;
 
   const updateCounts = () => {
-    countA.textContent = `${lineCount(paneA.value)} lines`;
-    countB.textContent = `${lineCount(paneB.value)} lines`;
+    countA.textContent = describeLines(paneA.value);
+    countB.textContent = describeLines(paneB.value);
   };
 
   // S3-07: The Apply Merge button is disabled while any conflict is open or markers remain,
@@ -125,6 +135,12 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
         mergeNote.textContent = "Merged result updated from your resolutions. Inputs are untouched.";
       }
     }
+    if (conflictList.querySelector) {
+      scrollConflictIntoView(conflictList, conflictList.querySelector(".is-selected"));
+    }
+    const hasConflicts = state.conflicts.length > 0;
+    if (prevButton) prevButton.disabled = !hasConflicts;
+    if (nextButton) nextButton.disabled = !hasConflicts;
     if (undoButton) undoButton.disabled = !session.canUndo();
     if (redoButton) redoButton.disabled = !session.canRedo();
     updateApplyMergeGuard();
@@ -147,6 +163,7 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
       currentOps = ops;
       manualLines = {};
       if (diffSummary) diffSummary.textContent = formatSummary(ops);
+      if (diffOutput) diffOutput.innerHTML = renderSideBySide(buildRows(ops));
       session.load(ops);
       mergeNote.textContent = "Comparison complete. Resolve conflicts or edit the merged result.";
       updateApplyMergeGuard();
@@ -261,6 +278,80 @@ export function init(doc = document, timers = {}, exportDeps = {}) {
 
   if (undoButton) undoButton.addEventListener("click", () => session.undo());
   if (redoButton) redoButton.addEventListener("click", () => session.redo());
+
+  // Prev / Next conflict navigation.
+  const moveSelection = (pick) => {
+    const state = session.getState();
+    const id = pick(state.conflicts, state.selectedId);
+    if (id !== null) session.select(id);
+  };
+  if (prevButton) prevButton.addEventListener("click", () => moveSelection(prevConflictId));
+  if (nextButton) nextButton.addEventListener("click", () => moveSelection(nextConflictId));
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo, [ and ] for
+  // previous / next conflict. None of them fire while the user is typing in a text box.
+  if (typeof doc.addEventListener === "function") {
+    doc.addEventListener("keydown", (event) => {
+      const action = undoRedoAction(event);
+      if (action === "undo" && session.canUndo()) {
+        event.preventDefault();
+        session.undo();
+        return;
+      }
+      if (action === "redo" && session.canRedo()) {
+        event.preventDefault();
+        session.redo();
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey || isTextEntry(event.target)) return;
+      if (event.key === "]") moveSelection(nextConflictId);
+      else if (event.key === "[") moveSelection(prevConflictId);
+    });
+  }
+
+  // Samples.
+  if (sampleSelect) {
+    sampleSelect.innerHTML = samples
+      .map((sample) => `<option value="${sample.id}">${sample.name}</option>`)
+      .join("");
+  }
+  if (loadSampleButton && sampleSelect) {
+    loadSampleButton.addEventListener("click", () => {
+      const sample = getSample(sampleSelect.value);
+      if (!sample) return;
+      paneA.value = sample.a;
+      paneB.value = sample.b;
+      comparer.compare();
+      updateCounts();
+      if (sampleNote) sampleNote.textContent = sample.description;
+    });
+  }
+
+  // Load file into a pane. The existing input checks (size, binary, UTF-8) live in loadFile.
+  const wireFileLoader = (key, pane) => {
+    const button = doc.getElementById(`load-${key}-btn`);
+    const input = doc.getElementById(`file-${key}`);
+    const note = doc.getElementById(`note-${key}`);
+    if (!button || !input) return;
+    button.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const result = await loadFile(file);
+      if (result.ok) {
+        pane.value = result.text;
+        updateCounts();
+        comparer.onEdit();
+        updateApplyMergeGuard();
+        if (note) note.textContent = `Loaded "${result.name}".`;
+      } else if (note) {
+        note.textContent = result.error;
+      }
+      input.value = ""; // lets the same file be chosen again
+    });
+  };
+  wireFileLoader("a", paneA);
+  wireFileLoader("b", paneB);
 
   const onPaneInput = () => {
     updateCounts();

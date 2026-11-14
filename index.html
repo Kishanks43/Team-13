@@ -7,6 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
   <title>Team 13 · Code Merge Simulator</title>
   <link rel="stylesheet" href="src/ui/app.css">
+  <link rel="stylesheet" href="src/ui/diff.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -20,21 +21,48 @@
       <button id="compare-btn" class="button button-primary" type="button">Compare versions</button>
     </header>
 
+    <section class="panel sample-row" aria-label="Sample scenarios">
+      <label for="sample-select">Sample scenario</label>
+      <select id="sample-select" class="select"></select>
+      <button id="load-sample-btn" class="button button-small" type="button">Load sample</button>
+      <span id="sample-note" class="muted" role="status" aria-live="polite"></span>
+    </section>
+
     <section class="input-grid" aria-label="Input versions">
       <article class="panel">
         <div class="panel-heading"><h2>Version A</h2><span id="count-a" class="muted">0 lines</span></div>
+        <div class="file-row">
+          <button id="load-a-btn" class="button button-small" type="button">Load file</button>
+          <input id="file-a" class="visually-hidden" type="file" tabindex="-1" aria-label="Choose a file for Version A">
+          <span id="note-a" class="muted" role="status" aria-live="polite"></span>
+        </div>
         <textarea id="pane-a" spellcheck="false" aria-label="Version A code" placeholder="Paste or type Version A here"></textarea>
       </article>
       <article class="panel">
         <div class="panel-heading"><h2>Version B</h2><span id="count-b" class="muted">0 lines</span></div>
+        <div class="file-row">
+          <button id="load-b-btn" class="button button-small" type="button">Load file</button>
+          <input id="file-b" class="visually-hidden" type="file" tabindex="-1" aria-label="Choose a file for Version B">
+          <span id="note-b" class="muted" role="status" aria-live="polite"></span>
+        </div>
         <textarea id="pane-b" spellcheck="false" aria-label="Version B code" placeholder="Paste or type Version B here"></textarea>
       </article>
+    </section>
+
+    <section class="panel" aria-labelledby="diff-heading">
+      <div class="panel-heading">
+        <h2 id="diff-heading">Differences</h2>
+        <p id="diff-summary" class="muted" aria-live="polite">Compare two versions to see the differences.</p>
+      </div>
+      <div id="diff-output" class="diff-output" role="region" aria-label="Side-by-side differences" tabindex="0"></div>
     </section>
 
     <section class="panel conflict-panel" aria-labelledby="conflicts-heading">
       <div class="panel-heading">
         <div><h2 id="conflicts-heading">Conflicts</h2><p id="conflict-counter" class="muted" aria-live="polite">0 total · 0 resolved · 0 remaining</p></div>
-        <div class="conflict-history" role="group" aria-label="Resolution history">
+        <div class="conflict-history" role="group" aria-label="Conflict navigation and history">
+          <button id="prev-btn" class="button button-small" type="button" aria-label="Previous conflict" title="Previous conflict ([)">Prev</button>
+          <button id="next-btn" class="button button-small" type="button" aria-label="Next conflict" title="Next conflict (])">Next</button>
           <button id="undo-btn" class="button button-small" type="button" disabled>Undo</button>
           <button id="redo-btn" class="button button-small" type="button" disabled>Redo</button>
         </div>
@@ -60,7 +88,7 @@
         <span id="export-note" class="muted" role="status" aria-live="polite"></span>
       </div>
     </section>
-    <footer>Code Merge Simulator · Team 13</footer>
+    <footer> Sprint 3 · S3-05 Keyboard access and contrast · S3-06 Cross-browser support · S3-07 Apply Merge guard · S3-08 Download/Copy merged file · S3-10 Demo and deployment </footer>
   </main>
   <script type="module" src="src/app.js"></script>
 </body>
