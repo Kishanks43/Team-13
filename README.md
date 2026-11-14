@@ -65,6 +65,7 @@ The expected Pages URL is `https://kishanks43.github.io/Team-13/` once the repos
 
 ## Sprint 3 bug fixes
 
+- **B-02 (#92):** The sample picker, Load file buttons, side-by-side diff view, Prev/Next buttons and the Ctrl+Z / `[` `]` shortcuts are back on the page.
 - **B-03 (#93):** Apply Merge now ignores source lines that start with `<<<<<<<`; only the app's own conflict markers block it.
 - **B-05 (#95):** Apply Merge is blocked when both input panes are empty, and a stale "Merge applied" note is cleared after Undo.
 

@@ -91,3 +91,33 @@ tr.diff-added td.empty { background: var(--diff-empty-bg); }
 tr.conflict-selected td:first-child {
   border-left: 3px solid var(--diff-selected-outline);
 }
+
+/* Classes produced by src/ui/diffView.js (renderSideBySide). */
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  color: var(--diff-text);
+}
+.diff-table col.col-num { width: 3.5rem; }
+.diff-table col.col-marker { width: 2.25rem; }
+.diff-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid var(--diff-border);
+  font-family: system-ui, sans-serif;
+}
+.diff-table td {
+  padding: 0.1rem 0.5rem;
+  border-bottom: 1px solid var(--diff-border);
+  vertical-align: top;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff-table td.diff-num { text-align: right; color: var(--diff-muted); user-select: none; }
+.diff-table td.diff-marker { text-align: center; font-weight: 700; user-select: none; }
+tr.diff-removed td { background: var(--diff-removed-bg); }
+tr.diff-added td { background: var(--diff-added-bg); }
+tr.diff-changed td { background: var(--diff-changed-bg); }
