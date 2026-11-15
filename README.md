@@ -1,74 +1,76 @@
-# Code Merge Simulator: story notes
+# Web-Based Code Merge Simulator (Team 13)
 
-Run these from the repository root:
+A browser tool for practising merge-conflict resolution. Paste or load two versions of a file, see
+the differences side by side, resolve each conflict (Accept A, Accept B, Accept Both, or edit by
+hand), and download or copy the merged result. Everything runs in the browser; no code leaves it.
+
+Plain JavaScript (ES modules), no framework or build step. Tested with Jest, linted with ESLint.
+
+## Run it
 
 ```bash
 npm install
-npm test
-npm run lint
 npm start
 ```
 
-Then open `http://localhost:8080` for the main page, or `http://localhost:8080/upload-demo.html` to try the upload checks.
+Then open `http://localhost:8080`.
 
-## S1-05: Reject bad uploads
+## Test it
 
-Reject bad uploads with a clear message so nothing breaks (roadmap story S1-05, issue #5).
-Binary files and files over 2 MB are refused. This also covers the S2-11 bug fix, which restores
-these checks in `src/fileLoader.js`.
+```bash
+npm test        # 397 tests
+npm run lint
+```
 
-`loadFile(file)` resolves to `{ ok: true, name, text }` or `{ ok: false, name, error }` and never throws.
-It refuses:
-- files over 2 MB (`MAX_FILE_BYTES`). The size is checked before reading, and again on the bytes
-  actually read, because a reported size can be wrong.
-- binary files: known signatures (PDF, PNG, JPEG, GIF, ZIP, gzip, executables), any NUL byte, or
-  many control characters at the start of the file.
-- UTF-16 text and text that is not valid UTF-8, each with its own message.
+GitHub Actions runs `npm test` on every pull request (Node 20).
 
-Text files load exactly as written (line endings, tabs, unicode). A 500-line file loads in well under 1 second.
+## Features
 
-Files:
-- `src/fileLoader.js` — the loader and its checks.
-- `tests/fileLoader.test.js` — 38 tests, including random (property-style) ones.
-- `upload-demo.html` — a small page to try the checks by hand.
+- Two input panes with line counts, **Load file** (text files up to 2 MB; binary files refused) and three **built-in samples**
+- **Side-by-side diff** with `~ + -` markers and a summary line
+- **Conflict list** with a live counter, **Previous / Next** buttons and the `[` `]` keys
+- **Accept A / Accept B / Accept Both** per conflict, with **Undo / Redo** (buttons, Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y)
+- Editable **Merged Result** with `<<<<<<<` / `=======` / `>>>>>>>` markers for open conflicts; a hand edit marks the conflict **Manual**
+- **Apply Merge**, enabled only when every conflict is resolved
+- **Download** (`merged-result.txt`) and **Copy** of the merged result
+- Pasted code is always shown as plain text, with a Content Security Policy on the page
 
-## S2-06: Tests for untouched input panes
+## Project layout
 
-Tests proving that Version A and Version B stay byte-for-byte unchanged by any merge edit
-(roadmap story S2-06, issue #16).
+```
+index.html            the page
+src/app.js            wires the page to the engine
+src/engine/           diff, conflicts, resolutions, session, history, merge, manual edits, merge guard
+src/ui/               diff view, conflict list, counter, navigation, shortcuts, download/copy, styles
+src/fileLoader.js     file loading and upload checks
+src/samples.js        built-in samples
+tests/                Jest tests (one file per module, plus page and end-to-end tests)
+docs/                 project documents and reports
+```
 
-What the tests prove:
-- Resolving conflicts (Accept A, B, Both), selecting conflicts, editing the merged pane by hand,
-  and re-comparing never change `pane-a` or `pane-b`.
-- The app never even writes to the input panes (write counters stay at zero).
-- Exact bytes are kept for tricky text: CRLF and lone CR, trailing newlines, tabs, a byte order mark,
-  unicode, 5,000-character lines, empty and identical inputs.
-- A seeded random (property-style) test runs 150 sessions of 25 random actions each.
-- The engine never changes its inputs: diffing, conflict finding, merging and the session are run on
-  deep-frozen data, so any in-place change would throw.
+## Documents
 
-Files:
-- `tests/inputsUntouched.test.js` — the S2-06 tests.
-- `tests/helpers/` — `fakeDom.js` (a small stand-in for the page) and `seeded.js` (repeatable random numbers).
-- `index.html` — the page, so you can try the story by hand.
+| Document | File |
+|---|---|
+| Software Requirements Specification | [`docs/SRS_Team13.docx`](docs/SRS_Team13.docx) |
+| Software Architecture and Design | [`docs/SAD_Team13_arch.docx`](docs/SAD_Team13_arch.docx) |
+| Test Plan | [`docs/Test_Plan_Team13.docx`](docs/Test_Plan_Team13.docx) |
+| Test Case Document | [`docs/Test_Case_Document_Team13.docx`](docs/Test_Case_Document_Team13.docx) |
+| Unit Test Report | [`docs/Unit_Test_Report_Team13.docx`](docs/Unit_Test_Report_Team13.docx) |
+| Code Coverage Report | [`docs/Code_Coverage_Report_Team13.docx`](docs/Code_Coverage_Report_Team13.docx) |
+| Branch Coverage Report | [`docs/Branch_Coverage_Report_Team13.docx`](docs/Branch_Coverage_Report_Team13.docx) |
+| System Validation Report | [`docs/System_Validation_Report_Team13.docx`](docs/System_Validation_Report_Team13.docx) |
+| Requirements Traceability Matrix | [`docs/Requirements_Traceability_Matrix_Team13.md`](docs/Requirements_Traceability_Matrix_Team13.md) |
+| Deviations from SRS and SAD | [`docs/Deviations_Team13.docx`](docs/Deviations_Team13.docx) |
+| Demo script | [`docs/DEMO-SCRIPT-S3-10.md`](docs/DEMO-SCRIPT-S3-10.md) |
 
-## Tooling
+## Known issues
 
-`package.json` and `eslint.config.js` hold the project scripts and tooling. CI runs `npm ci`, `npm test` and `npm run lint` on Node 22.
-## S3-10: Demo and GitHub Pages
+- Typing inside an open conflict block in the Merged Result moves the cursor to the end of the text (B-01, #91).
+- CI runs the tests but not ESLint (B-04, #94).
 
-The 5–7 minute presentation script, three sample walkthroughs, screenshot preparation helper,
-and GitHub Pages deployment workflow are documented in [`docs/DEMO-SCRIPT-S3-10.md`](docs/DEMO-SCRIPT-S3-10.md).
-The expected Pages URL is `https://kishanks43.github.io/Team-13/` once the repository owner enables
-**Settings → Pages → Source: GitHub Actions** and the deployment workflow succeeds.
+See the deviations document for requirements that were not built or were built differently.
 
+## Team
 
-## Sprint 3 bug fixes
-
-- **B-02 (#92):** The sample picker, Load file buttons, side-by-side diff view, Prev/Next buttons and the Ctrl+Z / `[` `]` shortcuts are back on the page.
-- **B-03 (#93):** Apply Merge now ignores source lines that start with `<<<<<<<`; only the app's own conflict markers block it.
-- **B-05 (#95):** Apply Merge is blocked when both input panes are empty, and a stale "Merge applied" note is cleared after Undo.
-
-## Testing documentation
-
-- **Test Case Document (Sprint 3 update):** [`docs/Test_Case_Document_Team13.md`](docs/Test_Case_Document_Team13.md) and [`docs/Test_Case_Document_Team13.docx`](docs/Test_Case_Document_Team13.docx) — T-03 (#88).
+Kishan Kabadi S, Madan P, Saurav Shashidhara
