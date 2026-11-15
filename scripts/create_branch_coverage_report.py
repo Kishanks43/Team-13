@@ -44,11 +44,10 @@ MODULE_DATA = [
 
 GROUP_TOTALS = [
     # (label, stmts%, branch%, funcs%, lines%)
-    ("src/ (root files)",   95.32, 87.50, 92.68, 96.66),
-    ("src/engine/",         97.57, 96.17, 96.49, 98.32),
-    ("src/ui/",             92.59, 84.25, 95.65, 92.17),
-    ("tests/helpers/",      95.45, 63.63, 93.33, 95.00),
-    ("ALL FILES",           95.86, 89.90, 94.85, 96.57),
+    ("src/ (root files)",   96.07, 88.63, 92.00, 97.65),
+    ("src/engine/",         98.04, 94.71, 97.14, 98.62),
+    ("src/ui/",             98.52, 89.09, 100.00, 98.27),
+    ("ALL SOURCE FILES",    97.41, 91.42, 95.80, 98.23),
 ]
 
 # ---------------------------------------------------------------------------
@@ -143,7 +142,8 @@ add_heading(doc, "1. Executive Summary", level=1)
 doc.add_paragraph(
     "This report presents the branch coverage analysis for the Code Merge Simulator collected from the full "
     "Jest test suite run during Sprint 3 (final run). All 31 test suites and 397 individual tests passed. Coverage was "
-    "measured using Jest's built-in Istanbul instrumentation across all production source modules."
+    "measured using Jest's built-in Istanbul instrumentation across all source files under src/; "
+    "test helpers are excluded so the scope matches the Code Coverage Report."
 )
 
 # Overall summary table
@@ -152,10 +152,10 @@ t = doc.add_table(rows=0, cols=4)
 t.style = "Table Grid"
 add_table_row(t, ["Metric", "Total Items", "Covered", "Coverage %"], header=True)
 for metric, total, covered, pct in [
-    ("Statements", 874, 851, "97.36%"),
-    ("Branches",   524, 476, "90.83%"),
-    ("Functions",  158, 151, "95.56%"),
-    ("Lines",      756, 742, "98.14%"),
+    ("Statements", 852, 830, "97.41%"),
+    ("Branches",   513, 469, "91.42%"),
+    ("Functions",  143, 137, "95.80%"),
+    ("Lines",      736, 723, "98.23%"),
 ]:
     r = add_table_row(t, [metric, total, covered, pct])
     if metric == "Branches":
@@ -165,7 +165,7 @@ for metric, total, covered, pct in [
 doc.add_paragraph(
     "Quality Gate: The project targets >90% branch coverage for core engine logic (src/engine/). "
     "The engine sub-package achieved 94.71% branch coverage, comfortably exceeding the threshold. "
-    "Overall branch coverage is 90.83%, also above the gate."
+    "Overall source branch coverage is 91.42%, also above the gate."
 )
 
 doc.add_paragraph()
@@ -179,6 +179,7 @@ env_rows = [
     ("Test Framework",   "Jest 29.7.0"),
     ("Coverage Instrument", "Istanbul v2 (bundled with Jest)"),
     ("Coverage Reporters", "json-summary, text, lcov"),
+    ("Coverage Scope", "src/**/*.js (test helpers excluded)"),
     ("Test Environment", "jsdom / node"),
     ("Operating System", "Windows 11"),
     ("Execution Time",   "~8.0 seconds"),
@@ -314,9 +315,9 @@ sc_t = doc.add_table(rows=0, cols=4)
 sc_t.style = "Table Grid"
 add_table_row(sc_t, ["Sprint", "Branch Coverage (Engine)", "Branch Coverage (All)", "Test Count"], header=True)
 for sprint, eng, all_, count in [
-    ("Sprint 1", "~70% (estimated)", "~65% (estimated)", "~80 tests"),
-    ("Sprint 2", "~88% (estimated)", "~82% (estimated)", "~200 tests"),
-    ("Sprint 3 (final)", "94.71% (measured)", "90.83% (measured)", "397 tests"),
+    ("Sprint 1", "~70% (estimated)", "~65% (estimated)", "66 tests"),
+    ("Sprint 2", "~88% (estimated)", "~82% (estimated)", "231 tests"),
+    ("Sprint 3 (final)", "94.71% (measured)", "91.42% (measured)", "397 tests"),
 ]:
     r = sc_t.add_row()
     for i, v in enumerate([sprint, eng, all_, count]):
@@ -332,7 +333,7 @@ doc.add_paragraph(
     "The final Sprint 3 test suite demonstrates strong coverage across the Code Merge Simulator:\n\n"
     "\u2022 Core Engine Coverage: src/engine/ achieved 94.71% branch coverage, exceeding the >90% quality gate.\n"
     "\u2022 All 31 test suites passed with 397 tests - zero failures.\n"
-    "\u2022 Overall coverage reached 90.83% branch, 97.36% statement and 98.14% line coverage.\n"
+    "\u2022 Overall coverage reached 91.42% branch, 97.41% statement and 98.23% line coverage.\n"
     "\u2022 6 of 8 engine modules achieved 90% or higher branch coverage.\n"
     "\u2022 The two engine modules below 90% threshold (history.js at 81.25% and session.js at 85.71%) have been "
     "analyzed; their uncovered branches are edge-case guards that do not affect primary workflows.\n"

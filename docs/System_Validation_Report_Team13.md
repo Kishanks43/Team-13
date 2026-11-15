@@ -3,10 +3,19 @@
 **Project:** Web-Based Code Merge Simulator  
 **Team No:** 13  
 **Version:** 1.1  
-**Date:** 13-11-2026  
+**Date:** 15-11-2026  
 **Authors:** Kishan Kabadi S (`Kishanks43`), Madan P (`madan-p-debug`), Saurav Shashidhara (`sauravs2006-max`)  
 **SRS Reference:** `docs/SRS_Team13.docx`  
 **Test Plan Reference:** `docs/Test_Plan_Team13.docx`  
+
+---
+
+## Revision History
+
+| Version | Date | Author | Change summary |
+|---|---|---|---|
+| 1.0 | 09-11-2026 | Team 13 (Kishan K) | Comprehensive system validation report covering Sprint 1, 2, and 3 |
+| 1.1 | 15-11-2026 | Team 13 (Kishan K) | Final re-run after PR #99: updated to 31 suites and 397 automated tests |
 
 ---
 
@@ -15,7 +24,7 @@
 This System Validation Report documents the comprehensive end-to-end verification of the **Web-Based Code Merge Simulator** following the completion of Sprints 1, 2, and 3. The primary goal is to provide verified empirical evidence that the integrated simulator complies with all functional requirements (CMS-F-001 to CMS-F-042), non-functional requirements (CMS-NF-001 to CMS-NF-006), and security requirements (CMS-SR-001 to CMS-SR-007) defined in the SRS.
 
 ### Key Validation Highlights
-- **Automated Test Execution:** **30 test suites, 391 automated unit/integration/E2E tests (100% Pass Rate, 0 Failures)**.
+- **Automated Test Execution:** **31 test suites, 397 automated unit/integration/E2E tests (100% Pass Rate, 0 Failures)**.
 - **Requirement Verification:** **32 Requirements Achieved (A, 91.4%)**, **2 Partially Achieved (P, 5.7%)**, **1 Deferred (N, 2.9%)**.
 - **Performance Benchmark:** 2,000-line Myers diff comparison completes in **0.15 seconds** (comfortably under the 2.0-second limit).
 - **Security & Privacy:** Verified client-side only processing (0 external HTTP calls, 0 cookies/local storage used); full anti-XSS payload sanitization; strict Content Security Policy.
@@ -122,4 +131,4 @@ This System Validation Report documents the comprehensive end-to-end verificatio
 
 ## 6. Conclusion & Release Readiness
 
-The Web-Based Code Merge Simulator (Team 13) has completed its validation criteria for demonstration. With **391 automated tests passing**, a clean ESLint run (0 errors), verified anti-XSS protection, WCAG AA accessibility, sub-200ms responsiveness, and zero runtime dependencies, the software is **ready for the final demonstration** and is a **release candidate**. It is not yet a released product: HTTPS transport security remains unverified because GitHub Pages is not enabled in this repository.
+The Web-Based Code Merge Simulator (Team 13) has completed its validation criteria for demonstration. With **397 automated tests passing**, a clean ESLint run (0 errors), verified anti-XSS protection, WCAG AA accessibility, sub-200ms responsiveness, and zero runtime dependencies, the software is **ready for the final demonstration** and is a **release candidate**. It is not yet a released product: HTTPS transport security remains unverified because GitHub Pages is not enabled in this repository.

@@ -87,6 +87,6 @@
 | **Partially Achieved (P)** | 0 | 0 | 2 | **2 (5.7%)** |
 | **Deferred / Future (N)** | 0 | 0 | 1 | **1 (2.9%)** |
 | **Automated Test Suites** | 7 suites | 14 suites | 31 suites | **31 suites** |
-| **Total Automated Tests** | 68 tests | 163 tests | 397 tests | **397 tests (100% passing)** |
+| **Total Automated Tests** | 66 tests | 231 tests | 397 tests | **397 tests (100% passing)** |
 
-> **Final verification (2026-11-15):** `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage` completed with **31/31 suites passed**, **397/397 tests passed**, and **0 failures**. Coverage: **90.83% branches**, **97.36% statements**, **95.56% functions**, and **98.14% lines** across all files; `src/engine/` reached **94.71% branch coverage**.
+> **Final verification (2026-11-15):** `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --collectCoverageFrom="src/**/*.js"` completed with **31/31 suites passed**, **397/397 tests passed**, and **0 failures**. Coverage across `src/`: **91.42% branches**, **97.41% statements**, **95.80% functions**, and **98.23% lines**; `src/engine/` reached **94.71% branch coverage**. Sprint-end test counts are 66 (Sprint 1) and 231 (Sprint 2), as recorded in the Unit Test Report.

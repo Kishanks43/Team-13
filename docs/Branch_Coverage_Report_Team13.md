@@ -8,7 +8,7 @@
 | **Report ID** | T-05 |
 | **GitHub Issue** | [#71](https://github.com/Kishanks43/Team-13/issues/71) |
 | **Coverage Tool** | Jest 29.7 with Istanbul (built-in) |
-| **Test Command** | `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --coverageReporters=json-summary --coverageReporters=text` |
+| **Test Command** | `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --collectCoverageFrom="src/**/*.js" --coverageReporters=json-summary --coverageReporters=text` |
 | **Date Generated** | 2026-11-15 |
 | **Prepared By** | Kishan K (Kishanks43) |
 
@@ -16,16 +16,16 @@
 
 ## 1. Executive Summary
 
-This report presents the branch coverage analysis for the Code Merge Simulator collected from the full Jest test suite (Sprint 3 final run). All **31 test suites** and **397 individual tests** passed. Coverage was measured using Jest's built-in Istanbul instrumentation across all production source modules.
+This report presents the branch coverage analysis for the Code Merge Simulator collected from the full Jest test suite (Sprint 3 final run). All **31 test suites** and **397 individual tests** passed. Coverage was measured using Jest's built-in Istanbul instrumentation across all source files under `src/`; test helpers are excluded so the scope matches the Code Coverage Report.
 
 | Metric | Total Items | Covered | Coverage % |
 |---|---|---|---|
-| **Statements** | 874 | 851 | **97.36%** |
-| **Branches** | 524 | 476 | **90.83%** |
-| **Functions** | 158 | 151 | **95.56%** |
-| **Lines** | 756 | 742 | **98.14%** |
+| **Statements** | 852 | 830 | **97.41%** |
+| **Branches** | 513 | 469 | **91.42%** |
+| **Functions** | 143 | 137 | **95.80%** |
+| **Lines** | 736 | 723 | **98.23%** |
 
-> **Quality Gate:** The project targets **>90% branch coverage** for core engine logic (`src/engine/`). The engine sub-package achieved **94.71% branch coverage**, comfortably exceeding the threshold. Overall project branch coverage is **90.83%**, also above the gate.
+> **Quality Gate:** The project targets **>90% branch coverage** for core engine logic (`src/engine/`). The engine sub-package achieved **94.71% branch coverage**, comfortably exceeding the threshold. Overall source branch coverage is **91.42%**, also above the gate.
 
 ---
 
@@ -36,6 +36,7 @@ This report presents the branch coverage analysis for the Code Merge Simulator c
 | **Runtime** | Node.js (with `--experimental-vm-modules` flag for ESM) |
 | **Test Framework** | Jest 29.7.0 |
 | **Coverage Instrument** | Istanbul v2 (bundled with Jest) |
+| **Coverage Scope** | `src/**/*.js` (test helpers excluded) |
 | **Coverage Reporters** | `json-summary`, `text` (console), `lcov` |
 | **Test Environment** | `jsdom` (for UI modules), `node` (default) |
 | **Operating System** | Windows 11 |
@@ -51,11 +52,10 @@ This report presents the branch coverage analysis for the Code Merge Simulator c
 
 | Group | % Statements | % Branches | % Functions | % Lines |
 |---|---|---|---|---|
-| **src/** (root files) | 96.08% | 88.64% | 92.00% | 97.66% |
-| **src/engine/** | 98.05% | **94.71%** | 97.14% | 98.63% |
-| **src/ui/** | 98.53% | 89.09% | 100.00% | 98.28% |
-| **tests/helpers/** | 95.45% | 63.64% | 93.33% | 95.00% |
-| **ALL FILES** | **97.36%** | **90.83%** | **95.56%** | **98.14%** |
+| **src/** (root files) | 96.07% | 88.63% | 92.00% | 97.65% |
+| **src/engine/** | 98.04% | **94.71%** | 97.14% | 98.62% |
+| **src/ui/** | 98.52% | 89.09% | 100.00% | 98.27% |
+| **ALL SOURCE FILES** | **97.41%** | **91.42%** | **95.80%** | **98.23%** |
 
 ### 3.2 Root Source Files (`src/`)
 
@@ -91,15 +91,6 @@ This report presents the branch coverage analysis for the Code Merge Simulator c
 | `paneInfo.js` | 100% | **100%** | 100% | 100% | - | Pass |
 | `progress.js` | 100% | **100%** | 100% | 100% | - | Pass |
 | `undoKeys.js` | 100% | **96%** | 100% | 100% | 28 | Pass |
-
-### 3.5 Test Helpers (`tests/helpers/`)
-
-| Module | % Stmts | % Branch | % Funcs | % Lines | Note |
-|---|---|---|---|---|---|
-| `fakeDom.js` | 94.11% | 63.63% | 91.66% | 93.33% | Helper; not production code |
-| `seeded.js` | 100% | 100% | 100% | 100% | Helper; not production code |
-
-> Test helpers are excluded from the quality gate assessment, as they are not production source code.
 
 ---
 
@@ -153,11 +144,11 @@ This report presents the branch coverage analysis for the Code Merge Simulator c
 
 | Sprint | Branch Coverage (Engine) | Branch Coverage (All) | Test Count |
 |---|---|---|---|
-| Sprint 1 | ~70% (estimated baseline) | ~65% | ~80 tests |
-| Sprint 2 | ~88% | ~82% | ~200 tests |
-| **Sprint 3 (final)** | **94.71% (measured)** | **90.83% (measured)** | **397 tests** |
+| Sprint 1 | ~70% (estimated baseline) | ~65% | 66 tests |
+| Sprint 2 | ~88% | ~82% | 231 tests |
+| **Sprint 3 (final)** | **94.71% (measured)** | **91.42% (measured)** | **397 tests** |
 
-> Sprint 1 and Sprint 2 figures are estimated from early commit history and partial test reports. Sprint 3 figures are measured directly from the final Jest coverage output.
+> Sprint 1 and Sprint 2 branch percentages are estimated from early commit history and partial test reports. Their test counts (66 and 231) are taken from the Unit Test Report. Sprint 3 figures are measured directly from the final Jest coverage output.
 
 ---
 
@@ -187,7 +178,7 @@ The following test cases would close the remaining medium-priority branches:
 The final Sprint 3 test suite demonstrates strong coverage across the Code Merge Simulator:
 
 - **Core Engine Coverage:** `src/engine/` achieved **94.71% branch coverage**, exceeding the >90% quality gate.
-- **Overall Coverage:** all files reached **90.83% branch coverage**, **97.36% statement coverage**, and **98.14% line coverage**.
+- **Overall Coverage:** all source files under `src/` reached **91.42% branch coverage**, **97.41% statement coverage**, and **98.23% line coverage**.
 - **All 31 test suites passed** with **397 tests** - zero failures.
 - **6 of 8 engine modules** achieved 90%+ branch coverage; five reached 95% or higher.
 - The two engine modules below threshold (`history.js` at 81.25% and `session.js` at 85.71%) have been analyzed; their uncovered branches are edge-case guards that do not affect the application's primary happy-path workflows.
