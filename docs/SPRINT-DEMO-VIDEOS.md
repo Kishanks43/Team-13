@@ -58,7 +58,9 @@ Goal: show the first working comparison flow.
 
 Goal: show conflict tracking and resolution.
 
-> **Sprint 2 note:** The `e59b03e` snapshot does **not** include the Sample or Load file controls. Those controls are present in Sprint 1 and return in Sprint 3. For the Sprint 2 video, paste the two versions into the panes manually. You can copy the `a` and `b` values of the `separate-edits` and `same-line-conflict` samples from `src/samples.js`, or reuse the text you already typed for the Sprint 1 recording.
+> **Sprint 2 note:** The `e59b03e` snapshot uses the conflict-first Sprint 2 page. Commit `6195895` (merged in PR #54, "S2-05 editable merged result pane") replaced the Sprint 1 `index.html` and `src/app.js` with that page, so the Sample / Load file controls and the side-by-side diff window are not rendered in this snapshot. The diff engine and `diffView.js` still exist in the repository, but Sprint 2 does not wire them into the page. Sprint 3 later re-integrates the Sample / Load file controls and the diff window in commit `18bd96c` (PR #99). This is a historical integration difference, not a missing feature in the final build.
+>
+> For the Sprint 2 video, paste the two versions into the panes manually. You can copy the `a` and `b` values of the `separate-edits` and `same-line-conflict` samples from `src/samples.js`, or reuse the text you already typed for the Sprint 1 recording.
 
 1. Start the Sprint 2 worktree and paste the `separate-edits` Version A and Version B text into the two panes.
 2. Click **Compare**.
