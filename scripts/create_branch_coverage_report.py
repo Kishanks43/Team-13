@@ -14,7 +14,7 @@ import os
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs", "Branch_Coverage_Report_Team13.docx")
 
 # ---------------------------------------------------------------------------
-# Coverage data (from Jest json-summary output, 2026-11-09)
+# Coverage data (from Jest json-summary output, 2026-11-15)
 # ---------------------------------------------------------------------------
 
 MODULE_DATA = [
@@ -123,10 +123,10 @@ meta_rows = [
     ("Report ID",        "T-05"),
     ("GitHub Issue",     "#71"),
     ("Coverage Tool",    "Jest 29.7 with Istanbul (built-in)"),
-    ("Date Generated",   "2026-11-09"),
+    ("Date Generated",   "2026-11-15"),
     ("Prepared By",      "Kishan K (Kishanks43)"),
-    ("Test Suites",      "26 passed"),
-    ("Total Tests",      "362 passed"),
+    ("Test Suites",      "31 passed"),
+    ("Total Tests",      "397 passed"),
 ]
 for key, val in meta_rows:
     r = meta.add_row()
@@ -142,7 +142,7 @@ doc.add_paragraph()
 add_heading(doc, "1. Executive Summary", level=1)
 doc.add_paragraph(
     "This report presents the branch coverage analysis for the Code Merge Simulator collected from the full "
-    "Jest test suite run during Sprint 3. All 26 test suites and 362 individual tests passed. Coverage was "
+    "Jest test suite run during Sprint 3 (final run). All 31 test suites and 397 individual tests passed. Coverage was "
     "measured using Jest's built-in Istanbul instrumentation across all production source modules."
 )
 
@@ -152,10 +152,10 @@ t = doc.add_table(rows=0, cols=4)
 t.style = "Table Grid"
 add_table_row(t, ["Metric", "Total Items", "Covered", "Coverage %"], header=True)
 for metric, total, covered, pct in [
-    ("Statements", 701, 672, "95.86%"),
-    ("Branches",   406, 365, "89.90%"),
-    ("Functions",  136, 129, "94.85%"),
-    ("Lines",      613, 592, "96.57%"),
+    ("Statements", 874, 851, "97.36%"),
+    ("Branches",   524, 476, "90.83%"),
+    ("Functions",  158, 151, "95.56%"),
+    ("Lines",      756, 742, "98.14%"),
 ]:
     r = add_table_row(t, [metric, total, covered, pct])
     if metric == "Branches":
@@ -164,7 +164,8 @@ for metric, total, covered, pct in [
 
 doc.add_paragraph(
     "Quality Gate: The project targets >90% branch coverage for core engine logic (src/engine/). "
-    "The engine sub-package achieved 96.17% branch coverage, comfortably exceeding the threshold."
+    "The engine sub-package achieved 94.71% branch coverage, comfortably exceeding the threshold. "
+    "Overall branch coverage is 90.83%, also above the gate."
 )
 
 doc.add_paragraph()
@@ -180,7 +181,7 @@ env_rows = [
     ("Coverage Reporters", "json-summary, text, lcov"),
     ("Test Environment", "jsdom / node"),
     ("Operating System", "Windows 11"),
-    ("Execution Time",   "~12.21 seconds"),
+    ("Execution Time",   "~8.0 seconds"),
 ]
 for k, v in env_rows:
     r = env_t.add_row()
@@ -315,27 +316,28 @@ add_table_row(sc_t, ["Sprint", "Branch Coverage (Engine)", "Branch Coverage (All
 for sprint, eng, all_, count in [
     ("Sprint 1", "~70% (estimated)", "~65% (estimated)", "~80 tests"),
     ("Sprint 2", "~88% (estimated)", "~82% (estimated)", "~200 tests"),
-    ("Sprint 3", "96.17% (measured)", "89.90% (measured)", "362 tests"),
+    ("Sprint 3 (final)", "94.71% (measured)", "90.83% (measured)", "397 tests"),
 ]:
     r = sc_t.add_row()
     for i, v in enumerate([sprint, eng, all_, count]):
         r.cells[i].text = v
         r.cells[i].paragraphs[0].runs[0].font.size = Pt(9)
-        r.cells[i].paragraphs[0].runs[0].bold = (sprint == "Sprint 3")
+        r.cells[i].paragraphs[0].runs[0].bold = (sprint.startswith("Sprint 3"))
 
 doc.add_paragraph()
 
 # Section 6 — Conclusion
 add_heading(doc, "6. Conclusion", level=1)
 doc.add_paragraph(
-    "The Sprint 3 test suite demonstrates strong coverage across the Code Merge Simulator:\n\n"
-    "• Core Engine Coverage: src/engine/ achieved 96.17% branch coverage, exceeding the >90% quality gate.\n"
-    "• All 26 test suites passed with 362 tests — zero failures.\n"
-    "• 5 of 7 engine modules achieved 100% or near-100% branch coverage.\n"
-    "• The two engine modules below 90% threshold (history.js at 81.25% and session.js at 85.71%) have been "
+    "The final Sprint 3 test suite demonstrates strong coverage across the Code Merge Simulator:\n\n"
+    "\u2022 Core Engine Coverage: src/engine/ achieved 94.71% branch coverage, exceeding the >90% quality gate.\n"
+    "\u2022 All 31 test suites passed with 397 tests - zero failures.\n"
+    "\u2022 Overall coverage reached 90.83% branch, 97.36% statement and 98.14% line coverage.\n"
+    "\u2022 6 of 8 engine modules achieved 90% or higher branch coverage.\n"
+    "\u2022 The two engine modules below 90% threshold (history.js at 81.25% and session.js at 85.71%) have been "
     "analyzed; their uncovered branches are edge-case guards that do not affect primary workflows.\n"
-    "• UI module conflictNav.js has notably low coverage (42.85%) due to DOM event handling complexity; "
-    "this is documented for the next sprint backlog.\n\n"
+    "\u2022 UI fallback branches remain in exportMerged.js (69.56%) and conflictNav.js (85.71%); these are "
+    "documented for the next patch cycle.\n\n"
     "Overall, the codebase is well-tested and ready for the Sprint 3 demo and final release."
 )
 
@@ -343,7 +345,7 @@ doc.add_paragraph()
 footer_p = doc.add_paragraph()
 footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 footer_run = footer_p.add_run(
-    "Report generated by: Kishan K (Kishanks43) · Team 13 · Sprint 3 · 2026-11-09\n"
+    "Report generated by: Kishan K (Kishanks43) · Team 13 · Sprint 3 · 2026-11-15\n"
     "Coverage tool: Jest 29.7.0 with Istanbul instrumentation · GitHub Issue #71"
 )
 footer_run.font.size = Pt(8)
