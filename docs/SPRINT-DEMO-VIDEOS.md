@@ -58,14 +58,16 @@ Goal: show the first working comparison flow.
 
 Goal: show conflict tracking and resolution.
 
-1. Start the Sprint 2 worktree and load the `separate-edits` sample.
+> **Sprint 2 note:** The `e59b03e` snapshot does **not** include the Sample or Load file controls. Those controls are present in Sprint 1 and return in Sprint 3. For the Sprint 2 video, paste the two versions into the panes manually. You can copy the `a` and `b` values of the `separate-edits` and `same-line-conflict` samples from `src/samples.js`, or reuse the text you already typed for the Sprint 1 recording.
+
+1. Start the Sprint 2 worktree and paste the `separate-edits` Version A and Version B text into the two panes.
 2. Click **Compare**.
 3. Point out the conflict list and the counter (`total`, `resolved`, `remaining`).
 4. Resolve Conflict 1 with **Accept A** and Conflict 2 with **Accept B**.
 5. Show the status badges and that the remaining count reaches zero.
 6. Show the editable **Merged Result** pane.
 7. Use **Undo** and **Redo** and point out that the counters and statuses update.
-8. Load the `same-line-conflict` sample, resolve it with **Accept Both**, and show the merged output.
+8. Paste the `same-line-conflict` Version A and Version B text, click **Compare**, resolve it with **Accept Both**, and show the merged output.
 9. Close with: "Sprint 2 added conflict grouping, the live counter, per-conflict resolution, the merged result editor and undo/redo."
 
 ## 5. Sprint 3 script (`main`) - about 3 minutes
