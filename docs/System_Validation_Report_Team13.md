@@ -15,7 +15,7 @@
 | Version | Date | Author | Change summary |
 |---|---|---|---|
 | 1.0 | 09-11-2026 | Team 13 (Kishan K) | Comprehensive system validation report covering Sprint 1, 2, and 3 |
-| 1.1 | 15-11-2026 | Team 13 (Kishan K) | Final re-run after PR #99: updated to 31 suites and 397 automated tests |
+| 1.1 | 15-11-2026 | Team 13 (Kishan K) | Final re-run after PR #99: 31 suites and 397 automated tests; added the maintenance plan |
 
 ---
 
@@ -129,6 +129,57 @@ This System Validation Report documents the comprehensive end-to-end verificatio
 
 ---
 
-## 6. Conclusion & Release Readiness
+## 6. Maintenance Plan
+
+This plan covers how defects and maintenance work are handled after the Sprint 3 release candidate.
+
+### 6.1 Bug reporting and triage
+
+- Report defects as GitHub Issues with a clear title, environment, steps to reproduce, expected and actual result, console output, and screenshots where useful.
+- Triage each issue by severity: **High** for data loss, crashes, security, or a blocked core workflow; **Medium** for incorrect behavior with a workaround; **Low** for cosmetic, documentation, or minor usability issues.
+- Assign an owner and milestone, link the issue to the affected requirement/story and test case, and reproduce it before changing code.
+- Review open issues at the start of each maintenance cycle. Current open issues are **B-01** (cursor moves to the end while typing inside an open conflict block) and **B-04** (CI runs tests but not ESLint). Fixed defects are recorded with their PRs in the Unit Test Report.
+
+### 6.2 Fix and release process
+
+1. Create a `bugfix/<issue>-<short-name>` branch from `main`.
+2. Add a regression test that fails before the fix and passes after it.
+3. Run `npm test` and `npm run lint` locally.
+4. Open a pull request linked to the issue; require CI to pass and at least one team review.
+5. Update the Unit Test Report, Requirements Traceability Matrix, and coverage/validation documents when behavior or test counts change.
+6. Merge only after review, then tag the release candidate or release version.
+
+### 6.3 Dependency updates
+
+- The application has no production runtime dependencies; Jest, jsdom, ESLint, and `http-server` are development-only tools.
+- Run `npm outdated` and `npm audit` at least once per sprint or before a release.
+- Prefer patch and minor updates first, keep the lockfile committed, and re-run the full test and lint suite after any update.
+- Avoid `npm audit fix --force` unless the breaking change has been reviewed and tested.
+
+### 6.4 Browser support
+
+- Target the latest two releases of Chrome, Firefox, Edge, and Safari on desktop, with a minimum viewport of 1280x720.
+- Use standard ES modules and native browser APIs; feature-detect clipboard support and keep the manual-copy fallback.
+- Run a smoke test on the supported browsers after UI changes and record any browser-specific limitation in the deviations document.
+
+### 6.5 Known open issues and future work
+
+Known open issues:
+
+- **B-01:** typing inside an open conflict block can move the cursor to the end of the merged text.
+- **B-04:** ESLint is not yet part of the CI workflow.
+
+Planned future work:
+
+- Three-way merge with a common ancestor (`CMS-F-004`).
+- Ignore-whitespace comparison toggle (`CMS-F-016`).
+- Word-level intra-line highlighting (`CMS-F-015`).
+- Fix B-01 and add ESLint to CI.
+- Exportable resolution audit log and a leave-page unsaved-changes warning.
+- Enable GitHub Pages and verify HTTPS deployment.
+
+---
+
+## 7. Conclusion & Release Readiness
 
 The Web-Based Code Merge Simulator (Team 13) has completed its validation criteria for demonstration. With **397 automated tests passing**, a clean ESLint run (0 errors), verified anti-XSS protection, WCAG AA accessibility, sub-200ms responsiveness, and zero runtime dependencies, the software is **ready for the final demonstration** and is a **release candidate**. It is not yet a released product: HTTPS transport security remains unverified because GitHub Pages is not enabled in this repository.
