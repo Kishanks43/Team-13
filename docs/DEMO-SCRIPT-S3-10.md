@@ -3,7 +3,8 @@
 **Project:** Team 13 — Code Merge Simulator  
 **Target audience:** evaluator, faculty and project reviewers  
 **Suggested duration:** 5–7 minutes  
-**Live URL after GitHub Pages is enabled:** `https://kishanks43.github.io/Team-13/`
+**Live URL after GitHub Pages is enabled:** `https://kishanks43.github.io/Team-13/`  
+**Recorded sprint demo videos:** [Team 13 demo videos (Google Drive)](https://drive.google.com/drive/folders/1fHmc6h0E2HO0E_vHkjqweV4W33SL503A?usp=sharing)
 
 > The URL above is the expected GitHub Pages URL for this public repository. It is not a claim that deployment has already happened. The repository owner must enable Pages with **GitHub Actions** as the source and merge/push this workflow before the live link can be verified.
 

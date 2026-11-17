@@ -1,8 +1,8 @@
 # Requirements Traceability Matrix (RTM) - Team 13
 
 **Project:** Web-Based Code Merge Simulator  
-**Document Version:** 2.0 (Post-Sprint 3 Integration)  
-**Date:** November 2026  
+**Document Version:** 2.1 (Final - 397 Tests Verified)  
+**Date:** 15 November 2026  
 **Authors:** Kishan Kabadi S (`Kishanks43`), Madan P (`madan-p-debug`), Saurav Shashidhara (`sauravs2006-max`)  
 **SRS Reference:** `docs/SRS_Team13.docx` (Section 8)  
 **Architecture Reference:** `docs/SAD_Team13_arch.docx`  
@@ -23,7 +23,7 @@
 
 | Req ID | Requirement Description | SRS Ref / Design Spec | Story | Owner | Implementing Module | Test Suite / Verification | Status | Comments & Evidence |
 |---|---|---|---|---|---|---|:---:|---|
-| **CMS-F-001** | Editable Version A and Version B input panes | 4.1 / DS-Input-01 | S1-03 | Madan | `index.html`, `src/app.js` | `tests/app.test.js`, `tests/inputsUntouched.test.js` | **A** | Two independent `<textarea>` panes (`pane-a`, `pane-b`) with live character/line tracking. |
+| **CMS-F-001** | Editable Version A and Version B input panes | 4.1 / DS-Input-01 | S1-03 | Madan | `index.html`, `src/app.js` | `tests/app.test.js`, `tests/inputsUntouched.test.js`, `tests/pageControls.test.js` | **A** | Two independent `<textarea>` panes (`pane-a`, `pane-b`) with live character/line tracking. |
 | **CMS-F-002** | Load version from local text or source file | 4.1 / DS-Input-02 | S1-04, S1-05 | Madan | `src/fileLoader.js`, `src/app.js` | `tests/fileLoader.test.js` | **A** | Reads UTF-8 text files; refuses binary/null bytes and files over 2 MB. |
 | **CMS-F-003** | Built-in sample scenarios | 4.1 / DS-Input-03 | S1-09 | Kishan | `src/samples.js`, `src/app.js` | `tests/samples.test.js` | **A** | Pre-loaded scenarios: `separate-edits`, `same-line-conflict`, `deleted-vs-modified`. |
 | **CMS-F-004** | Optional common ancestor (three-way merge) | 4.1 / DS-Input-04 | — | Team | — | — | **N** | Two-way merge simulator scope prioritized per SRS Section 1.2. |
@@ -86,5 +86,7 @@
 | **Requirements Achieved (A)** | 10 | 11 | 11 | **32 (91.4%)** |
 | **Partially Achieved (P)** | 0 | 0 | 2 | **2 (5.7%)** |
 | **Deferred / Future (N)** | 0 | 0 | 1 | **1 (2.9%)** |
-| **Automated Test Suites** | 7 suites | 14 suites | 26 suites | **26 suites** |
-| **Total Automated Tests** | 68 tests | 163 tests | 362 tests | **362 tests (100% passing)** |
+| **Automated Test Suites** | 7 suites | 14 suites | 31 suites | **31 suites** |
+| **Total Automated Tests** | 66 tests | 231 tests | 397 tests | **397 tests (100% passing)** |
+
+> **Final verification (2026-11-15):** `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --collectCoverageFrom="src/**/*.js"` completed with **31/31 suites passed**, **397/397 tests passed**, and **0 failures**. Coverage across `src/`: **91.42% branches**, **97.41% statements**, **95.80% functions**, and **98.23% lines**; `src/engine/` reached **94.71% branch coverage**. Sprint-end test counts are 66 (Sprint 1) and 231 (Sprint 2), as recorded in the Unit Test Report.
